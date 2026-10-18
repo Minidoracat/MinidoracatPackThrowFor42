@@ -519,6 +519,123 @@ do -- SP 在 addVehicleDebug 裡同步跑 damnlib 客戶端 Init：空槽的隨�
 end
 addVehicleDebug = savedAdd
 
+print("Snapshot.restore：改裝 hook 照 part modData 決定留不留零件（Autotsar tsarslib Tuning2；正式服 2026-10-18 展開後改裝件不見）")
+do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
+    local saved = { add = addVehicleDebug, dirs = IsoDirections, utils = VehicleUtils, inst = instanceItem }
+    IsoDirections = { N = "N" }
+    VehicleUtils = { callLua = function(fn, ...) return fn(...) end }
+    local Item, Part, Car = {}, {}, {}
+    Item.__index, Part.__index, Car.__index = Item, Part, Car
+    local function item(fullType, cond) return setmetatable({ type = fullType, cond = cond or 100, md = {} }, Item) end
+    function Item:getFullType() return self.type end
+    function Item:getCondition() return self.cond end
+    function Item:setConditionNoSound(c) self.cond = c end
+    function Item:hasModData() return next(self.md) ~= nil end
+    function Item:getModData() return self.md end
+    function Item:IsDrainable() return false end
+    instanceItem = function(t) return item(t) end
+    function Part:getId() return self.id end
+    function Part:getCondition() return self.cond end
+    function Part:setCondition(c) self.cond = c; if self.item then self.item.cond = c end end -- VehiclePart.java:870-886
+    function Part:getInventoryItem() return self.item end
+    function Part:setInventoryItem(it) self.item = it end
+    function Part:hasModData() return next(self.md) ~= nil end
+    function Part:getModData() return self.md end
+    function Part:getTable(name) return self.tables and self.tables[name] end
+    function Part:getItemType() return { isEmpty = function() return false end } end
+    function Part:getItemContainer() return nil end
+    function Part:isContainer() return false end
+    function Part:getDoor() return nil end
+    function Part:getWindow() return nil end
+    function Part:getLight() return nil end
+    for _, f in ipairs({ "setKeyId", "setSkinIndex", "setColorHSV", "setRust", "setBloodIntensity", "setEngineFeature",
+        "setHotwired", "setAlarmed", "setHeadlightsOn", "updatePartStats", "updateBulletStats", "doDamageOverlay", "exit" }) do
+        Car[f] = function() end
+    end
+    function Car:getScriptName() return "Base.PickUpTruck" end
+    function Car:getScript() return nil end
+    function Car:getSkinIndex() return 0 end
+    function Car:getColorHue() return 0.1 end
+    function Car:getColorSaturation() return 0.2 end
+    function Car:getColorValue() return 0.3 end
+    function Car:getRust() return 0 end
+    function Car:getBloodIntensity() return 0 end
+    function Car:getEngineQuality() return 50 end
+    function Car:getEngineLoudness() return 40 end
+    function Car:getEnginePower() return 60 end
+    function Car:getKeyId() return 7 end
+    function Car:isHotwired() return false end
+    function Car:isAlarmed() return false end
+    function Car:getHeadlightsOn() return false end
+    function Car:hasModData() return false end
+    function Car:getModData() return self.md end
+    function Car:getPartCount() return #self.list end
+    function Car:getPartByIndex(i) return self.list[i + 1] end
+    function Car:getPartById(id) return self.byId[id] end
+    function Car:getSquare() return {} end
+    -- the tsarslib Tuning2 hooks, the parts that matter here (ATATuning2.lua): install drops the item of a slot whose
+    -- tuning2 names no model (ModelByModData :451-452); a guard parks the condition of the part it protects in that
+    -- part's modData and shows 100 (InstallComplete.Tuning :571-600); uninstall gives the parked condition back
+    local function install(car, part)
+        local t2 = part:getModData().tuning2
+        if not (t2 and part:getInventoryItem()) then return end
+        if not t2.model then part:setInventoryItem(nil) return end
+        for _, id in ipairs(t2.protection or {}) do
+            local guarded = car:getPartById(id)
+            local g = guarded:getModData()
+            g.tuning2 = g.tuning2 or {}
+            if guarded:getInventoryItem() then
+                g.tuning2.health = guarded:getCondition()
+                guarded:setCondition(100)
+            end
+        end
+    end
+    local function uninstall(car, part)
+        local t2 = part:getModData().tuning2
+        for _, id in ipairs(t2 and t2.protection or {}) do
+            local g = car:getPartById(id):getModData().tuning2
+            if g and g.health then car:getPartById(id):setCondition(g.health); g.health = nil end
+        end
+    end
+    local hooks = { install = { complete = install }, uninstall = { complete = uninstall } }
+    -- parts in script order: the guarded headlight comes before its bull bar (ATA Jeep and Samara windows, headlights)
+    local function car(parts)
+        local c = setmetatable({ list = {}, byId = {}, md = {} }, Car)
+        for _, s in ipairs(parts) do
+            local p = setmetatable({ id = s[1], item = s[2] and item(s[2], s[3]), cond = s[3] or 100, md = s[4],
+                tables = s[5] }, Part)
+            c.list[#c.list + 1] = p
+            c.byId[p.id] = p
+        end
+        return c
+    end
+    local bulb = "Base.LightBulb"
+    local packed = car({
+        { "Headlight", bulb, 86, { tuning2 = { health = 60, protectionRequireUninstalled = { Bullbar = true } } } },
+        { "Bullbar", bulb, 90, { tuning2 = { model = "Bar2", protection = { "Headlight" } } }, hooks },
+        { "Spoiler", bulb, 100, { tuning2 = { model = "Rear1" } }, hooks },
+        { "Skirts", nil, 100, { tuning2 = {} }, hooks },
+    })
+    -- a fresh spawn as ATATuning2.Create.Tuning leaves it: slots tuning2 = {}, one slot rolled a random part
+    local fresh = car({
+        { "Headlight", bulb, 77, {} },
+        { "Bullbar", nil, 100, { tuning2 = {} }, hooks },
+        { "Spoiler", nil, 100, { tuning2 = {} }, hooks },
+        { "Skirts", bulb, 100, { tuning2 = { model = "Rand" } }, hooks },
+    })
+    addVehicleDebug = function() return fresh end
+    local v = M.Unpack.spawn(M.Snapshot.capture(packed), {}, "N")
+    local bar, spoiler, light, skirts = fresh.byId.Bullbar, fresh.byId.Spoiler, fresh.byId.Headlight, fresh.byId.Skirts
+    check(v == fresh and bar.item ~= nil and spoiler.item ~= nil and bar.md.tuning2.model == "Bar2"
+        and spoiler.md.tuning2.model == "Rear1" and bar.cond == 90 and bar.item.cond == 90,
+        "快照裡裝著的改裝件都裝回去、型號照快照（新車那槽的 tuning2 沒有型號，hook 會把物品拿掉）")
+    check(light.cond == 86 and light.item.cond == 86 and light.md.tuning2.health == 60
+        and light.md.tuning2.protectionRequireUninstalled.Bullbar == true,
+        "排在護槓前面、被它保護的大燈：狀況與停著的真實狀況照快照（護槓的 hook 後跑也蓋不掉）")
+    check(skirts.item == nil and next(skirts.md.tuning2) == nil, "快照裡空著的改裝槽維持空的（新車隨機抽到的拿掉）")
+    addVehicleDebug, IsoDirections, VehicleUtils, instanceItem = saved.add, saved.dirs, saved.utils, saved.inst
+end)() end
+
 print("Admin.restore：可補的狀態、CAR_EXISTS、checked、先改 RESTORED 再生車")
 local spawnFails, restoringId, fileAtSpawn = false, nil, {}
 M.Unpack.spawn = function(s)

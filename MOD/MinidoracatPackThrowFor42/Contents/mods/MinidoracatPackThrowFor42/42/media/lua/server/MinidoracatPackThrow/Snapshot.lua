@@ -174,7 +174,19 @@ local function callPartLua(vehicle, part, tableName, ...)
     if not ok then M.log("part " .. part:getId() .. " " .. tableName .. ".complete failed: " .. tostring(err)) end
 end
 
+-- Condition and modData as captured. Runs again once every part is in: an install hook may write other parts
+-- (tsarslib Tuning2 guards park the condition of the parts they protect in that part's modData and set it to 100).
+local function restoreState(part, ps)
+    part:setCondition(ps.cond) -- also writes item condition
+    local item = part:getInventoryItem()
+    if item and ps.icond then item:setConditionNoSound(ps.icond) end
+    replaceModData(part:getModData(), ps.modData)
+end
+
 local function restorePart(vehicle, part, ps)
+    -- hooks read the original modData: tsarslib Tuning2 takes the item back out of a slot whose tuning2 names no model
+    -- (ATATuning2Utils.ModelByModData), and in a fresh spawn it names none unless that slot rolled a random part
+    replaceModData(part:getModData(), ps.modData)
     local cur = part:getInventoryItem()
     local item = nil
     if ps.item then
@@ -192,10 +204,8 @@ local function restorePart(vehicle, part, ps)
         part:setInventoryItem(nil)
         callPartLua(vehicle, part, "uninstall", cur)
     end
-    part:setCondition(ps.cond) -- also writes item condition
-    if item and ps.icond then item:setConditionNoSound(ps.icond) end
+    restoreState(part, ps)
     if item and ps.uses then item:setCurrentUsesFloat(ps.uses) end
-    replaceModData(part:getModData(), ps.modData)
     if ps.amount then
         part:setContainerContentAmount(ps.amount, true, true)
         -- Physics-only (Bullet native); a dedicated server has no Bullet and throws UnsatisfiedLinkError.
@@ -277,6 +287,11 @@ function Snapshot.restore(vehicle, snap, opts)
         end
         local inv = part:getItemContainer()
         if inv then inv:removeAllItems() end
+    end
+    for i = 0, vehicle:getPartCount() - 1 do
+        local part = vehicle:getPartByIndex(i)
+        local ps = snap.parts[part:getId()]
+        if ps then restoreState(part, ps) end
     end
     local md = vehicle:getModData()
     replaceModData(md, snap.modData)
