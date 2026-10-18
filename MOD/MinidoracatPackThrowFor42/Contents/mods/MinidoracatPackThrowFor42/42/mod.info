@@ -3,5 +3,5 @@ id=MinidoracatPackThrowFor42
 description=[B42]把停著的車或活著的動物收進膠囊，丟出去就原樣出現；空膠囊丟向動物或車也能直接抓進去。車的改裝、車況與貨物，動物的品種、年齡與基因都保留。By Minidoracat
 poster=poster.png
 require=MinidoracatUIFor42
-modversion=42.21.0-0.2.0
+modversion=42.21.0-0.2.1
 versionMin=42.21.0
