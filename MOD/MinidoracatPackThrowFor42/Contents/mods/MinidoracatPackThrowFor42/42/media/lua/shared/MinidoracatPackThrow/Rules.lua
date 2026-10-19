@@ -117,6 +117,13 @@ function Rules.typeOn(t)
     return t ~= nil and Rules.sandbox()["Type" .. t.id] ~= false
 end
 
+-- Whether players may craft an empty one of type t (its recipe t.recipe, Recipes.lua): sandbox AllowCraftCapsules for
+-- capsules, AllowCraftSpheres for spheres, both off by default (user 2026-10-19), and never a type switched off.
+function Rules.craftOn(t)
+    return t ~= nil and Rules.sandbox()[t.sphere and "AllowCraftSpheres" or "AllowCraftCapsules"] == true
+        and Rules.typeOn(t)
+end
+
 -- The player's first empty capsule of type t (any depth in the inventory), or nil.
 function Rules.emptyCapsule(player, t)
     return t and player:getInventory():getFirstTypeRecurse(t.empty)

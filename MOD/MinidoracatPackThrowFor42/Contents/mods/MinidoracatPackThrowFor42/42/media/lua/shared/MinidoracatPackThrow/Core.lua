@@ -11,7 +11,8 @@ M.PACK_RANGE = 8 -- tiles between player and vehicle (pack) or player and capsul
 -- index the server sends with an effect (Fx.broadcast args.style). Capsules take vehicles only, spheres animals only
 -- (user 2026-10-14; a wrong one is WRONG_ITEM). id gives the rest: items Capsule<id> / LoadedCapsule<id>, a sphere
 -- <id> / Loaded<id> (scripts/MinidoracatPackThrow_items.txt), icons Item_<icon>[Loaded].png (scripts/assets/
--- build_capsule.py, build_sphere.py), sandbox Type<id> (using it allowed) and Type<id>Loot (in loot), the
+-- build_capsule.py, build_sphere.py), sandbox Type<id> (using it allowed) and Type<id>Loot (in loot), the craft
+-- recipe CraftMinidoracatPackThrow<empty item> (scripts/MinidoracatPackThrow_recipes.txt, Recipes.lua), the
 -- look-and-sound line Tooltip_MinidoracatPackThrow_Look_<id>. Look and sounds (client/Effects.lua): smoke =
 -- texture name prefix of the frames <prefix>1.png .. <prefix><frames>.png (cartoon: scripts/assets/build_smoke.py, the
 -- others design_smoke.py), px = drawn size at zoom 1, anchor = share of that size above the ground point, flash =
@@ -59,6 +60,7 @@ for i, t in ipairs(M.TYPES) do
     t.empty = M.MODULE .. (t.sphere and "." or ".Capsule") .. t.id
     t.loaded = M.MODULE .. (t.sphere and ".Loaded" or ".LoadedCapsule") .. t.id
     t.icon = t.sphere and ("MinidoracatSphere" .. t.tier) or ("MinidoracatCapsule" .. t.id)
+    t.recipe = "CraftMinidoracatPackThrow" .. (t.sphere and "" or "Capsule") .. t.id
     M.EMPTY[t.empty], M.LOADED[t.loaded], M.TYPE_BY_ID[t.id] = t, t, t
 end
 M.FIRST_SPHERE = M.TYPE_BY_ID.SphereBasic

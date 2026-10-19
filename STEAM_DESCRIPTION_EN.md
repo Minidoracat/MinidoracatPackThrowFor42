@@ -17,7 +17,7 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 
 [h2]🚀 Quick Start[/h2]
 [olist]
-[*] Get empty capsules and Pal Spheres: loot mechanic shops, car supply stores, barns, pet stores and hunting lockers, or get them from an admin or the Economy Center
+[*] Get empty capsules and Pal Spheres: loot mechanic shops, car supply stores, barns, pet stores and hunting lockers, or get them from an admin or the Economy Center; when the server turns crafting on, you can also make them from vanilla parts at a table
 [*] Park, turn the engine off and make sure nobody is inside, then right-click the vehicle and choose [b]Pack into Capsule[/b]; right-click a live animal, open its submenu and choose [b]Catch in Pal Sphere[/b]; or right-click an empty capsule or Pal Sphere in your inventory and choose [b]Throw to Capture[/b]
 [*] For a vehicle, right-click the capsule, choose [b]Throw Capsule[/b], pick a landing spot with the cursor and left-click; too heavy to pick up? Right-click it on the ground and choose [b]Press the Button[/b]
 [*] For an animal, right-click the Pal Sphere holding it in your inventory and choose [b]Release[/b]; the animal appears right next to you

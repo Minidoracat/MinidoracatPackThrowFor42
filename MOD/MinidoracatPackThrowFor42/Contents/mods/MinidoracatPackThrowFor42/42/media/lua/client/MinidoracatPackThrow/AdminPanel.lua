@@ -1023,6 +1023,8 @@ end
 Panel.GENERAL = {
     { key = "ReturnEmptyCapsule", kind = "bool", default = true },
     { key = "ReturnEmptySphere", kind = "bool", default = true },
+    { key = "AllowCraftCapsules", kind = "bool", default = false },
+    { key = "AllowCraftSpheres", kind = "bool", default = false },
     { key = "PackPermission", kind = "choice", count = 3, default = 1 },
     { key = "ZombieSoundRadius", kind = "int", min = 0, max = 50, default = 0 },
     { key = "AllowCargoTakeOut", kind = "bool", default = false },

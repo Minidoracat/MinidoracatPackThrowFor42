@@ -12,6 +12,14 @@ option MinidoracatPackThrow.ReturnEmptyCapsule
 option MinidoracatPackThrow.ReturnEmptySphere
 {type = boolean, default = true, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_ReturnEmptySphere,}
 
+/* 玩家可以在工作台用原版零件製作七種空膠囊（scripts/MinidoracatPackThrow_recipes.txt；Rules.craftOn，「可以收車」關掉的款式不能做）。預設關（使用者 2026-10-19） */
+option MinidoracatPackThrow.AllowCraftCapsules
+{type = boolean, default = false, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_AllowCraftCapsules,}
+
+/* 玩家可以製作空帕魯球：帕魯球用零件做，高級以上用下一級的空帕魯球升級（同一個配方檔；「可以抓動物」關掉的等級不能做）。預設關 */
+option MinidoracatPackThrow.AllowCraftSpheres
+{type = boolean, default = false, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_AllowCraftSpheres,}
+
 /* 誰能收車（Vehicle Manager 沒綁定的車才看這個；綁定的車問它的 canUse(TOW)）：1 有這台車鑰匙的人（背包或點火孔）、2 任何人、3 只有管理員 */
 option MinidoracatPackThrow.PackPermission
 {type = enum, numValues = 3, default = 1, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_PackPermission,}

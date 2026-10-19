@@ -3563,6 +3563,102 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     loaded["TimedActions/ISBaseTimedAction"] = nil
 end)() end
 
+print("Craft：配方腳本（每種一條、膠囊材料相同、帕魯球逐級升級、電瓶按件）、沙盒閘門（預設關、款式停用）、Neat Crafting 過濾、16 種語言")
+do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
+    require "MinidoracatPackThrow/Recipes"
+    local Recipes, Rules = M.Recipes, M.Rules
+    local f = io.open(MEDIA .. "/../scripts/MinidoracatPackThrow_recipes.txt", "rb")
+    local txt = f:read("*a"):gsub("/%*.-%*/", "")
+    f:close()
+    local bad, inputs, n = {}, {}, 0
+    for name, body in txt:gmatch("craftRecipe%s+([%w_]+)%s*(%b{})") do
+        n = n + 1
+        local t = Recipes.TYPE[name]
+        if not t then
+            bad[#bad + 1] = name .. " no type"
+        else
+            local fn = "MinidoracatPackThrow_craft" .. t.id
+            if not (body:find("OnTest = " .. fn .. ",", 1, true) and body:find("OnAddToMenu = " .. fn .. ",", 1, true)
+                and type(_G[fn]) == "function") then bad[#bad + 1] = name .. " hooks" end
+            local out = body:match("outputs%s*(%b{})") or ""
+            if not out:find("item 1 " .. t.empty .. ",", 1, true) then bad[#bad + 1] = name .. " output" end
+            inputs[t.id] = body:match("inputs%s*(%b{})") or ""
+            for line in inputs[t.id]:gmatch("[^\n]+") do
+                if line:find("carbattery", 1, true) and not (line:find("mode:destroy", 1, true)
+                    and line:find("ItemCount", 1, true)) then bad[#bad + 1] = name .. " battery" end
+            end
+        end
+    end
+    local same, chain = true, true
+    for _, t in ipairs(M.TYPES) do
+        if not t.sphere and inputs[t.id] ~= inputs.Cartoon then same = false end
+        local below = M.TYPES[t.index - 1]
+        local takes = (inputs[t.id] or ""):find("[" .. (below and below.empty or "-") .. "]", 1, true) ~= nil
+        if t.sphere and takes ~= (t ~= M.FIRST_SPHERE) then chain = false end
+    end
+    check(n == #M.TYPES and #bad == 0, "每種一條配方，OnTest 與 OnAddToMenu 都指向存在的全域函式、產出那一種空的；"
+        .. "汽車電瓶 destroy 帶 ItemCount（" .. n .. " 條；" .. table.concat(bad, ",") .. "）")
+    check(same and inputs.Cartoon:find("carbattery", 1, true) ~= nil, "七種膠囊的材料與工具完全相同（款式只差外觀）")
+    check(chain, "帕魯球從零件做起，高級以上各用下一級的空帕魯球升級")
+
+    local saved = SandboxVars
+    local function on(id) return _G["MinidoracatPackThrow_craft" .. id]() == true end
+    local function agrees()
+        for _, t in ipairs(M.TYPES) do
+            if on(t.id) ~= Rules.craftOn(t) or Recipes.hidden(t.recipe) == on(t.id) then return false end
+        end
+        return true
+    end
+    SandboxVars = nil
+    check(not on("Cartoon") and not on("SphereBasic") and agrees(), "沙盒還沒讀到（主選單）：一律不能做")
+    SandboxVars = { MinidoracatPackThrow = {} }
+    check(not on("Cartoon") and not on("SphereLegend") and agrees(), "預設關：膠囊與帕魯球都不能做")
+    SandboxVars = { MinidoracatPackThrow = { AllowCraftCapsules = true } }
+    check(on("Cartoon") and on("Shock") and not on("SphereBasic") and agrees(), "只開膠囊：七種膠囊能做，帕魯球不能")
+    SandboxVars = { MinidoracatPackThrow = { AllowCraftSpheres = true, TypeSphereGiga = false } }
+    check(on("SphereBasic") and on("SphereLegend") and not on("SphereGiga") and not on("Cartoon") and agrees(),
+        "只開帕魯球：停用的優質帕魯球不能做，其他等級能做，膠囊不能")
+    SandboxVars = { MinidoracatPackThrow = { AllowCraftCapsules = true, AllowCraftSpheres = true, TypeSteam = false } }
+    check(not on("Steam") and on("Real") and on("SphereGiga") and agrees(), "兩個都開：停用的蒸汽膠囊不能做")
+    check(Recipes.hidden("CraftMinidoracatPackThrowCapsuleSteam") and not Recipes.hidden("CraftMinidoracatPackThrowCapsuleReal")
+        and not Recipes.hidden("OpenCannedFood") and not Recipes.hidden(nil), "清單過濾只藏本 MOD 不能做的配方，其他配方不碰")
+
+    local function recipe(name) return { getName = function() return name end } end
+    local savedNC = NC_FilterBar
+    NC_FilterBar = { shouldIncludeRecipe = function(_, r) return r:getName() ~= "OriginalNo" end }
+    local first, again = Recipes.wrapNeatCrafting(), Recipes.wrapNeatCrafting()
+    local F = NC_FilterBar
+    check(first and not again and not F:shouldIncludeRecipe(recipe("CraftMinidoracatPackThrowCapsuleSteam"))
+        and F:shouldIncludeRecipe(recipe("CraftMinidoracatPackThrowCapsuleReal")) and F:shouldIncludeRecipe(recipe("OpenCannedFood"))
+        and not F:shouldIncludeRecipe(recipe("OriginalNo")),
+        "Neat Crafting：包一次就好，不能做的配方不列，其他照它原本的判斷")
+    NC_FilterBar = nil
+    check(Recipes.wrapNeatCrafting() == false, "沒裝 Neat Crafting：什麼都不包")
+    NC_FilterBar, SandboxVars = savedNC, saved
+
+    local missing = {}
+    for _, lang in ipairs({ "AR", "CH", "CN", "DE", "EN", "ES", "ES_CL", "ES_MX", "FR", "JP", "KO", "PL", "PT", "PTBR", "RU", "TR" }) do
+        local dir = MEDIA .. "/shared/Translate/" .. lang .. "/"
+        local function json(file)
+            local h = io.open(dir .. file, "rb")
+            if not h then return {} end
+            local s = h:read("*a")
+            h:close()
+            return M.Json.decode(s) or {}
+        end
+        local names, sb = json("Recipes.json"), json("Sandbox.json")
+        for _, t in ipairs(M.TYPES) do
+            if not names[t.recipe] then missing[#missing + 1] = lang .. ":" .. t.recipe end
+        end
+        for _, k in ipairs({ "AllowCraftCapsules", "AllowCraftSpheres" }) do
+            for _, s in ipairs({ "", "_tooltip" }) do
+                if not sb["Sandbox_MinidoracatPackThrow_" .. k .. s] then missing[#missing + 1] = lang .. ":" .. k .. s end
+            end
+        end
+    end
+    check(#missing == 0, "16 種語言都有 11 條配方名與兩個製作開關（" .. table.concat(missing, ",", 1, math.min(#missing, 12)) .. "）")
+end)() end
+
 print()
 if failures > 0 then
     print(failures .. " 項失敗")

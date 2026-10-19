@@ -12,7 +12,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3820790323
 Pack & Throw lets you pack a parked vehicle into a capsule and carry it around. Throw the capsule when you need it: the vehicle appears exactly as it was, with its mods, condition and cargo. Live animals are caught in Pal Spheres instead: a caught animal is carried in the sphere and released right next to you when you want it. Packed vehicles are not in the world, so busy bases run smoother too.
 The Pal Sphere names and looks are a tribute to Palworld; this mod is not affiliated with Pocketpair.
 [olist]
-[*] [b]Get empty capsules and Pal Spheres[/b]: loot, an admin or the Economy Center; see "Getting capsules and Pal Spheres".
+[*] [b]Get empty capsules and Pal Spheres[/b]: loot, an admin or the Economy Center; when the server turns crafting on, you can also make them; see "Getting capsules and Pal Spheres".
 [*] [b]Pack a vehicle[/b]: park, turn the engine off, make sure nobody is inside, carry an empty capsule, then right-click the vehicle and choose "Pack into Capsule". After about 10 seconds the vehicle is packed and the capsule drops where the vehicle stood.
 [*] [b]Catch an animal[/b]: carry an empty Pal Sphere, right-click a live animal, open that animal's submenu and choose "Catch in Pal Sphere"; see "Catching an animal with a Pal Sphere".
 [*] [b]Throw to capture[/b]: right-click an empty capsule or Pal Sphere in your inventory, choose "Throw to Capture", and throw the capsule at a vehicle or the sphere at an animal; see "Throwing to capture".
@@ -23,10 +23,27 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 === 🧰 Getting capsules and Pal Spheres
 [list]
 [*] [b]Loot[/b]: all seven kinds of empty capsule show up in containers at mechanic shops, car supply stores and gas station repair bays; home garages are off by default. Each location's share is split evenly over the types that are on. Empty Pal Spheres have three locations of their own: barns, pet stores and hunting lockers (all on by default), and the four tiers are split 8:4:2:1 by rarity, so the better ones are rarer. Servers can toggle each location and tune its weight; see "Sandbox options and defaults".
+[*] [b]Crafting[/b]: once the server turns on "Allow crafting empty capsules" or "Allow crafting empty Pal Spheres" (both off by default), you can make them next to a table or similar surface; see "Crafting" below for the parts.
 [*] [b]Economy Center[/b]: with Minidoracat Economy installed, admins list the empty capsule (item ID [b]MinidoracatPackThrow.Capsule<Type>[/b], for example CapsuleCartoon) or empty Pal Sphere ([b]MinidoracatPackThrow.Sphere<Tier>[/b], for example SphereBasic) to sell it; "List..." in the admin panel's "Types" tab opens a product draft for that capsule or Pal Sphere in the Economy Center.
 [*] [b]Capsules holding a vehicle and Pal Spheres holding an animal[/b]: can be listed or auctioned too; see "Trading vehicles and animals in the Economy Center".
 [*] [b]From admins[/b]: hand out empty capsules and Pal Spheres with the vanilla item list or the /additem command.
 [/list]
+[h3]Crafting[/h3]
+[list]
+[*] [b]The server turns it on[/b]: "Allow crafting empty capsules" and "Allow crafting empty Pal Spheres" on the sandbox page "Minidoracat Pack & Throw" or the admin panel's "Settings" tab, both off by default; while they're off, the crafting window doesn't show these recipes.
+[*] [b]Where[/b]: stand next to a table, counter or similar surface; the recipes are in the crafting window's "Electrical" category, and like the vanilla electrical recipes they need light.
+[*] [b]Types and tiers switched off[/b]: a capsule type or Pal Sphere tier whose "Use" is off in the "Types" tab can't be crafted.
+[*] [b]Pal Spheres go up one tier at a time[/b]: the Pal Sphere is made from parts; each higher tier takes an empty one of the tier below plus more parts, and that sphere is used up.
+[*] [b]Tools[/b]: the screwdriver and the pliers are kept; the pliers may wear a little.
+[/list]
+[table]
+[tr][th]Makes[/th][th]Parts[/th][th]Tools[/th][th]Skills[/th][/tr]
+[tr][td]Empty capsule (one recipe per type, all with the same parts)[/td][td]Car Battery 1 (any charge), Steel Sheet - Small 1, Scrap Electronics 4, Amplifier 1, Electrical Wire 2, Screws 2[/td][td]Screwdriver, Pliers[/td][td]Electrical 4, Mechanics 2[/td][/tr]
+[tr][td]Pal Sphere[/td][td]Baseball, Tennis Ball or Tin Can 1, Scrap Electronics 2, Electrical Wire 1[/td][td]Screwdriver[/td][td]Electrical 1[/td][/tr]
+[tr][td]Mega Sphere[/td][td]Empty Pal Sphere 1, Amplifier 1, Scrap Electronics 2[/td][td]Screwdriver[/td][td]Electrical 3[/td][/tr]
+[tr][td]Giga Sphere[/td][td]Empty Mega Sphere 1, Radio Receiver 1, Radio Transmitter 1, Scrap Electronics 3, Electrical Wire 1[/td][td]Screwdriver, Pliers[/td][td]Electrical 5[/td][/tr]
+[tr][td]Legendary Sphere[/td][td]Empty Giga Sphere 1, Motion Sensor 1, Amplifier 1, Scrap Electronics 4, Electrical Wire 2[/td][td]Screwdriver, Pliers[/td][td]Electrical 7[/td][/tr]
+[/table]
 [h3]Seven capsule types[/h3]
 [list]
 [*] [b]Types[/b]: Cartoon, Realistic, Dust, Steam, Sci-Fi, Magic and Shockwave. The end cap color tells the type; a loaded capsule adds a patterned band.
@@ -341,6 +358,8 @@ The options are on the sandbox pages "Minidoracat Pack & Throw", "Minidoracat Pa
 [tr][th]Option[/th][th]Default[/th][th]Notes[/th][/tr]
 [tr][td]Return an empty capsule[/td][td]On[/td][td]After a capsule unpacks, an empty capsule of the same type goes back into the thrower's inventory. Every capsule tooltip says whether it comes back, in the warning colour when it doesn't[/td][/tr]
 [tr][td]Return an empty Pal Sphere[/td][td]On[/td][td]After a Pal Sphere releases its animal, an empty Pal Sphere of the same tier goes back into your inventory. Every Pal Sphere tooltip says whether it comes back, in the warning colour when it doesn't[/td][/tr]
+[tr][td]Allow crafting empty capsules[/td][td]Off[/td][td]When on, players can make all seven kinds of empty capsule from vanilla parts next to a table or similar surface; see "Crafting" for the parts. Types with "can pack" off can't be crafted[/td][/tr]
+[tr][td]Allow crafting empty Pal Spheres[/td][td]Off[/td][td]When on, players can make empty Pal Spheres, each higher tier from an empty one of the tier below; see "Crafting" for the parts. Tiers with "can catch" off can't be crafted[/td][/tr]
 [tr][td]Who can pack vehicles[/td][td]Key holders[/td][td]The key in the inventory or in the ignition; can be set to "Anyone" or "Admins only"[/td][/tr]
 [tr][td]Zombie attraction radius of the capsule sound[/td][td]0 tiles (0–50)[/td][td]0 means the capsule's pop attracts no zombies[/td][/tr]
 [tr][td]Allow taking cargo out of capsules[/td][td]Off[/td][td]When on, players can take cargo out of a loaded capsule without unpacking the vehicle, but can't put anything in; a capsule packed in the last ~5 seconds or left unconfirmed by a crash stays locked[/td][/tr]
@@ -405,7 +424,7 @@ The options are on the sandbox pages "Minidoracat Pack & Throw", "Minidoracat Pa
 [/list]
 [h3]Settings, Types and Loot[/h3]
 [list]
-[*] [b]Settings[/b]: the general sandbox options of this mod can be changed here (return an empty capsule, return an empty Pal Sphere, who can pack, the zombie attraction radius of the capsule sound, taking cargo out of capsules, allow catching animals, wild catch base chance, Pal Sphere lost on a failed catch, injured bonus, young bonus, unaware bonus, days to keep closed records); they take effect as soon as you press "Apply". Long lists scroll, and "Discard changes" and "Apply" stay at the bottom.
+[*] [b]Settings[/b]: the general sandbox options of this mod can be changed here (return an empty capsule, return an empty Pal Sphere, allow crafting empty capsules, allow crafting empty Pal Spheres, who can pack, the zombie attraction radius of the capsule sound, taking cargo out of capsules, allow catching animals, wild catch base chance, Pal Sphere lost on a failed catch, injured bonus, young bonus, unaware bonus, days to keep closed records); they take effect as soon as you press "Apply". Long lists scroll, and "Discard changes" and "Apply" stay at the bottom.
 [*] [b]Types[/b]: one row per capsule type and per Pal Sphere tier with its "Use" (capsules pack vehicles, Pal Spheres catch animals) and "Loot" switches.
 [*] [b]Preview[/b]: press a row's "Preview": the panel steps aside and a capsule of that type is thrown beside you (the Sci-Fi effect for a Pal Sphere), seen by you only. It works before you press "Apply" too.
 [*] [b]List...[/b]: with Minidoracat Economy installed, opens a product draft for that empty capsule or Pal Sphere on the Economy Center's shop page; set the price there. One already on sale is skipped.
@@ -491,6 +510,7 @@ Select the record, check on site, tick "I checked on site", then press:
 [*] [b]Restoring[/b]: brings back the vehicle, not the cargo; the server only finds vehicles that are loaded nearby, so check on site before deciding.
 [*] [b]"Last seen"[/b]: only records the moment the server saw the capsule: one in a container or vehicle updates when someone opens that container, and who took it afterwards or where it went is not known.
 [*] [b]After unpacking[/b]: this mod doesn't track the vehicle; use Vehicle Manager for owners and locations.
+[*] [b]Crafting window[/b]: when an admin switches crafting, a capsule type or a Pal Sphere tier on or off, a crafting window that is already open shows the change after you close and reopen it.
 [/list]
 === ❓ FAQ
 [h3]Removing this mod?[/h3]
@@ -503,6 +523,11 @@ Select the record, check on site, tick "I checked on site", then press:
 [*] Check bodies, the ground and the vehicle containers first.
 [*] If it's really gone, give an admin the capsule number (shown in the tooltip or dialog) or your name.
 [*] The admin can see where the capsule went and restore the vehicle (the cargo doesn't come back).
+[/list]
+[h3]Can I make capsules or Pal Spheres myself?[/h3]
+[list]
+[*] Only if the server turns on "Allow crafting empty capsules" or "Allow crafting empty Pal Spheres" (both off by default; the admin panel's "Settings" tab can turn them on).
+[*] Then stand next to a table or similar surface and find the recipes in the crafting window's "Electrical" category; parts and skills are under "Crafting" in "Getting capsules and Pal Spheres".
 [/list]
 [h3]What happens to capsules after a server crash?[/h3]
 [list]
