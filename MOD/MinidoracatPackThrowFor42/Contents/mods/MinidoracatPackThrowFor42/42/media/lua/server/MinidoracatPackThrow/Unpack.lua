@@ -98,9 +98,13 @@ function Unpack.spawn(snap, square, dir, opts, capsule, player)
     local ok, vehicle = pcall(addVehicleDebug, snap.script, facing, nil, square)
     spawning = false
     if defaults then damn.processDefaults = defaults end
-    -- addVehicleDebug returns a vehicle even when the spot is invalid (LuaManager.java:10817-10826)
-    if not ok or not vehicle or not vehicle:getSquare() then
-        if not ok then M.log("addVehicleDebug failed: " .. tostring(vehicle)) end
+    -- An invalid spot (indoors outside a vehicle zone; Footprint.clear refuses it first, the debug commands skip that)
+    -- skips addToWorld and VehiclesDB2.addVehicle yet returns the vehicle (LuaManager.java:10817-10828,
+    -- IsoChunk.java:1240-1268); its sqlId stays -1, since only VehiclesDB2 numbers one (VehiclesDB2.java:301-320).
+    -- getSquare() is no test: it is worked out from x, y, z (BaseVehicle.java:9769-9771). Check before exit(nil), which
+    -- would number it (VehiclesDB2.java:333-336).
+    if not ok or not vehicle or vehicle:getSqlId() == -1 then
+        M.log(not ok and ("addVehicleDebug failed: " .. tostring(vehicle)) or ("engine did not place " .. snap.script))
         return nil, "BLOCKED"
     end
     Snapshot.restore(vehicle, snap, opts)

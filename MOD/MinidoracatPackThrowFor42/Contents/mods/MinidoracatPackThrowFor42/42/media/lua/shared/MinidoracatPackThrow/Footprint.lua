@@ -1,8 +1,9 @@
 -- Pack & Throw: where a capsule may land and the ground its vehicle needs. Shared by the landing cursor (client)
 -- and the throw / landing checks (server), so both judge the same squares.
 -- addVehicleDebug puts the vehicle centre on the target square's north-west corner and turns it up to 0.2 rad off
--- the asked direction (LuaManager.java:10806-10815). It only refuses another vehicle and indoor squares outside
--- vehicle zones (IsoChunk.java:1240-1267), so walls, fences, trees, furniture and people are checked here.
+-- the asked direction (LuaManager.java:10806-10815). It only refuses indoor squares outside vehicle zones
+-- (IsoChunk.java:1254-1256): its vehicle overlap test reads the new vehicle's physics transform, not set yet there, so
+-- it never fires (E2E unplaced-mp). Other vehicles, walls, fences, trees, furniture and people are checked here.
 require "MinidoracatPackThrow/Core"
 local M = MinidoracatPackThrow
 local Footprint = {}

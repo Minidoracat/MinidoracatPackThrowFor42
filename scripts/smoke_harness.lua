@@ -519,6 +519,44 @@ do -- SP 在 addVehicleDebug 裡同步跑 damnlib 客戶端 Init：空槽的隨�
 end
 addVehicleDebug = savedAdd
 
+print("Unpack：addVehicleDebug 沒把車放進世界（sqlId -1）＝生車失敗，膠囊與紀錄不動（正式服 2026-10-19 有車整台消失）")
+do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
+    local S = M.Snapshot
+    local saved = { add = addVehicleDebug, dirs = IsoDirections, restore = S.restore, cargo = S.restoreCargo }
+    IsoDirections = { N = "N" }
+    local restored = 0
+    S.restore = function() restored = restored + 1 end
+    S.restoreCargo = function() return { home = 0, other = 0, ground = 0 } end
+    local spot = { getX = function() return 3 end, getY = function() return 4 end, getZ = function() return 0 end }
+    -- an invalid spot (indoors outside a vehicle zone) skips addToWorld and VehiclesDB2, yet the vehicle comes back
+    -- (LuaManager.java:10817-10828); getSquare() is worked out from x, y, z (BaseVehicle.java:9769)
+    local function spawned(sqlId)
+        return { getSqlId = function() return sqlId end, getSquare = function() return spot end, getId = function() return 9 end,
+            getKeyId = function() return 1 end, getSkinIndex = function() return 0 end, exit = function() end }
+    end
+    local p = newPlayer("unpacker", false)
+    local function capsule()
+        local cap = p.inv:AddItem(instanceItem(M.TYPES[1].loaded))
+        Store.write(cap.id, { state = "PACKED", settled = true, script = "Base.PickUpTruck", keyId = 1, rust = 0, parts = {},
+            hsv = { 0.1, 0.2, 0.3 }, engine = { 50, 40, 60 }, history = { { ev = "PACKED", car = 7 } } })
+        return cap
+    end
+    local lost, kept = capsule(), capsule()
+    quiet = true
+    addVehicleDebug = function() return spawned(-1) end
+    local refused = M.Unpack.unpack(p, lost, spot, "N", {})
+    local refusedRec, restoredRefused = Store.read(lost.id), restored
+    addVehicleDebug = function() return spawned(41) end
+    local placed = M.Unpack.unpack(p, kept, spot, "N", {})
+    quiet = false
+    check(refused.ok == false and refused.why == "BLOCKED" and restoredRefused == 0 and refusedRec.state == "PACKED"
+        and refusedRec.history[#refusedRec.history].ev == "UNPACK_FAILED" and p.inv:getItemWithIDRecursiv(lost.id) == lost,
+        "車沒放進世界：BLOCKED、快照不寫進那台車、紀錄退回 PACKED、膠囊留在背包")
+    check(placed.ok and placed.sqlId == 41 and Store.read(kept.id).state == "UNPACKED" and p.inv:getItemWithIDRecursiv(kept.id) == nil,
+        "車放進世界（有 sqlId）：照常展開")
+    addVehicleDebug, IsoDirections, S.restore, S.restoreCargo = saved.add, saved.dirs, saved.restore, saved.cargo
+end)() end
+
 print("Snapshot.restore：改裝 hook 照 part modData 決定留不留零件（Autotsar tsarslib Tuning2；正式服 2026-10-18 展開後改裝件不見）")
 do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     local saved = { add = addVehicleDebug, dirs = IsoDirections, utils = VehicleUtils, inst = instanceItem }
@@ -572,7 +610,7 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     function Car:getPartCount() return #self.list end
     function Car:getPartByIndex(i) return self.list[i + 1] end
     function Car:getPartById(id) return self.byId[id] end
-    function Car:getSquare() return {} end
+    function Car:getSqlId() return 1 end -- placed: VehiclesDB2 numbered it
     -- the tsarslib Tuning2 hooks, the parts that matter here (ATATuning2.lua): install drops the item of a slot whose
     -- tuning2 names no model (ModelByModData :451-452); a guard parks the condition of the part it protects in that
     -- part's modData and shows 100 (InstallComplete.Tuning :571-600); uninstall gives the parked condition back
