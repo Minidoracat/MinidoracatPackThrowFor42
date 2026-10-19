@@ -3,5 +3,5 @@ id=MinidoracatPackThrowFor42
 description=[B42]把停著的車收進膠囊、活著的動物收進帕魯球，丟出或放出就原樣出現；空膠囊丟向車、空帕魯球丟向動物也能直接收進去。車的改裝、車況與貨物，動物的品種、年齡與基因都保留。By Minidoracat
 poster=poster.png
 require=MinidoracatUIFor42
-modversion=42.21.0-0.3.0
+modversion=42.21.0-0.3.1
 versionMin=42.21.0
