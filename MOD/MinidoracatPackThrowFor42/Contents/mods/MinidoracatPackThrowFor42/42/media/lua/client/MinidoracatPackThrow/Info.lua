@@ -224,9 +224,10 @@ function Info.animalRows(a)
     if hp then add(getText("IGUI_XP_Health"), T("Percent", tostring(math.floor(hp * 100 + 0.5)))) end
     if tonumber(a.milkMax) then add(T("Milk"), T("FuelOf", num1(tonumber(a.milk) or 0), num1(a.milkMax))) end
     if (tonumber(a.wool) or 0) > 0 then add(getText("IGUI_Animal_Wool"), woolText(a.wool)) end
-    if a.pregnant then add(getText("IGUI_Animal_Pregnant"), getText("IGUI_Yes")) end
-    if a.fert then add(getText("IGUI_Animal_Fertilized"), getText("IGUI_Yes")) end
-    if a.wild then add(T("Wild"), getText("IGUI_Yes")) end -- own label: vanilla KO IGUI_Animal_Wild is empty
+    -- own "yes" and wild label: vanilla KO IGUI_Yes and IGUI_Animal_Wild are empty (KO showed the English fallback)
+    if a.pregnant then add(getText("IGUI_Animal_Pregnant"), T("Yes")) end
+    if a.fert then add(getText("IGUI_Animal_Fertilized"), T("Yes")) end
+    if a.wild then add(T("Wild"), T("Yes")) end
     return rows
 end
 
