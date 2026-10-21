@@ -51,6 +51,7 @@ function Pack.pack(player, vehicle, opts)
     if not capsule then return { ok = false, why = "NO_ITEM" } end
     local capsuleId = capsule:getID()
     snap.state = "PACKED"
+    if not M.Rules.cargoWeighs() then snap.light = true end -- cargo goes into the capsule's store (Snapshot.packCargo)
     snap.packedBy = player:getUsername()
     snap.history = { { t = getTimestampMs(), ev = "PACKED", by = snap.packedBy, x = x, y = y, z = z, car = car } }
     snap.seen = { t = snap.history[1].t, where = "ground", x = x, y = y, z = z } -- the capsule drops where the car stood
@@ -78,7 +79,8 @@ function Pack.pack(player, vehicle, opts)
     writeLine(M.LOG_PREFIX .. "PACKED capsule=" .. capsuleId .. " state=PACKED by=" .. snap.packedBy
         .. " x=" .. x .. " y=" .. y .. " z=" .. z .. " car=" .. tostring(car) .. " script=" .. tostring(snap.script)
         .. " type=" .. t.id
-        .. " cargo=" .. moved .. " key=" .. tostring(key ~= nil) .. " empty=" .. tostring(empty)
+        .. " cargo=" .. moved .. " light=" .. tostring(snap.light == true) .. " key=" .. tostring(key ~= nil)
+        .. " empty=" .. tostring(empty)
         .. " skipped=" .. (#snap.skipped > 0 and table.concat(snap.skipped, ",") or "-"))
     return { ok = true, capsuleId = capsuleId, x = x, y = y, z = z, cargo = moved,
         skipped = table.concat(snap.skipped, ","), script = snap.script, type = t.id }

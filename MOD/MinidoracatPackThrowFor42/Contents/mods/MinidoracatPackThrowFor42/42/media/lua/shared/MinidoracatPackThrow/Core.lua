@@ -105,6 +105,28 @@ function M.withoutCapsules(list)
     return list
 end
 
+-- A loaded capsule's cargo store, or nil: resource `cargo` of the Resources component its item script gives it. A vehicle
+-- packed while sandbox CargoWeight is off keeps its cargo there (Snapshot.storeCargo). The engine saves and sends stored
+-- items with the capsule the way it does a container's contents (ResourceItem.save -> CompressIdenticalItems,
+-- ResourceItem.java:666-675; GameEntity.saveEntity), but the capsule's weight reads its container only
+-- (InventoryContainer.getContentsWeight, InventoryContainer.java:278-285). On an item the component does nothing: no
+-- vanilla UI lists it, and the resource systems skip it (Component.isValid; Resources is valid on IsoObjects only,
+-- ComponentType.java:75).
+function M.cargoStore(capsule)
+    local res = capsule:getComponent(ComponentType.Resources)
+    return res and res:getResource("cargo")
+end
+
+-- A loaded capsule's top-level cargo as a Lua array: its container's items, then its cargo store's.
+function M.cargoItems(capsule)
+    local out, items = {}, capsule:getInventory():getItems()
+    for i = 0, items:size() - 1 do out[#out + 1] = items:get(i) end
+    local store = M.cargoStore(capsule)
+    local stored = store and store:getStoredItems()
+    for i = 0, (stored and stored:size() or 0) - 1 do out[#out + 1] = stored:get(i) end
+    return out
+end
+
 -- Same rule as VehicleManager O.isAdmin: Capability.ManipulateVehicle on a dedicated server; SP host is admin.
 function M.isAdmin(player)
     if player == nil then return false end

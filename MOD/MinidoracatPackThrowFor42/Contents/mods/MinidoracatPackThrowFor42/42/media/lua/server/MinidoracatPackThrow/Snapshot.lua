@@ -1,5 +1,6 @@
 -- Pack & Throw: read a vehicle into a plain snapshot table and write it back onto a fresh vehicle.
--- Cargo is never serialized: the original item objects travel inside the capsule (same Java objects).
+-- Cargo is never serialized: the original item objects travel inside the capsule (same Java objects), in its container
+-- or, for a light record (sandbox CargoWeight off at packing), in its cargo store (M.cargoStore).
 if isClient() then return end
 require "MinidoracatPackThrow/Core"
 require "MinidoracatPackThrow/Json"
@@ -113,7 +114,8 @@ local function itemsOf(inv)
     return list
 end
 
--- Moves every part container's items into the capsule (original objects). Returns the count.
+-- Moves every part container's items into the capsule (original objects): its container, then its cargo store for a
+-- light record (snap.light). Returns the count.
 function Snapshot.packCargo(vehicle, capsule, snap)
     local box, n = capsule:getInventory(), 0
     for i = 0, vehicle:getPartCount() - 1 do
@@ -125,12 +127,37 @@ function Snapshot.packCargo(vehicle, capsule, snap)
             end
         end
     end
+    if snap.light then Snapshot.storeCargo(capsule) end
     return n
 end
 
--- Puts capsule items back into their original part containers; unknown/missing -> first container with room,
--- then the ground under the vehicle. Returns { home = n, other = n, ground = n }.
+-- The capsule container's top-level items into its cargo store (a bag keeps its contents). Server side, and no packet:
+-- whoever calls it sends the whole capsule afterwards (a new world item, Economy's handover) or moves the items back in
+-- the same tick. An item the store refuses stays in the container. Returns how many moved.
+function Snapshot.storeCargo(capsule)
+    local store, box, n = M.cargoStore(capsule), capsule:getInventory(), 0
+    if not store then return 0 end
+    for _, item in ipairs(itemsOf(box)) do
+        box:Remove(item)
+        -- force, no sync: Resource.sync sends a homogeneous list (ResourceItem.saveSync throws on mixed types)
+        if store:offerItem(item, true, true, false) == nil then n = n + 1 else box:AddItem(item) end
+    end
+    return n
+end
+
+-- The other way: the cargo store's items back into the capsule container (unpacking, Trade.escrow). Returns how many.
+function Snapshot.unstoreCargo(capsule)
+    local store = M.cargoStore(capsule)
+    if not store or store:isEmpty() then return 0 end
+    local box, list = capsule:getInventory(), store:removeAllItems(ArrayList.new())
+    for i = 0, list:size() - 1 do box:AddItem(list:get(i)) end
+    return list:size()
+end
+
+-- Puts the capsule's cargo (container and cargo store) back into its original part containers; unknown/missing -> first
+-- container with room, then the ground under the vehicle. Returns { home = n, other = n, ground = n }.
 function Snapshot.restoreCargo(capsule, vehicle, snap)
+    Snapshot.unstoreCargo(capsule)
     local box = capsule:getInventory()
     local res = { home = 0, other = 0, ground = 0 }
     for _, item in ipairs(itemsOf(box)) do

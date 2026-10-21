@@ -197,7 +197,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [/list]
 [h3]Press the Button (capsule on the ground)[/h3]
 [list]
-[*] [b]When[/b]: heavy cargo can make a capsule too heavy to pick up, and so too heavy to throw.
+[*] [b]When[/b]: heavy cargo can make a capsule too heavy to pick up, and so too heavy to throw (not a capsule packed after the server turned "Capsule weight includes cargo" off).
 [*] [b]How[/b]: right-click the capsule on the ground (in the world or the loot window) and choose "Press the Button". Your character walks to the capsule and the same landing cursor appears; left-click to press, right-click to cancel.
 [*] [b]Where the vehicle appears[/b]: within about 3 tiles of the capsule.
 [*] [b]Cargo[/b]: goes back into the vehicle as usual.
@@ -277,7 +277,8 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [*] [b]The original items go in[/b]: everything in the vehicle's containers goes into the capsule, so water in bottles, items inside bags, blood and dirt on clothes and food freshness are all kept.
 [*] [b]On unpacking[/b]: items go back into their original container.
 [*] [b]Original container gone[/b] (the part was removed, for example): they go into another container on the vehicle with room, and whatever still doesn't fit lands on the ground next to it.
-[*] [b]Weight counts[/b]: a capsule weighs the capsule itself plus all of its cargo, in your hands too. A capsule with heavy cargo can't be picked up; use Press the Button.
+[*] [b]Weight[/b]: by default a capsule weighs the capsule itself plus all of its cargo, in your hands too; a capsule with heavy cargo can't be picked up, so use Press the Button.
+[*] [b]Capsules that don't weigh their cargo[/b]: vehicles packed after the server turns the sandbox option "Capsule weight includes cargo" off still keep their cargo in the capsule, and it all goes back on unpacking, but the capsule weighs only itself. Each capsule keeps the setting it was packed with: changing the option never makes a packed capsule lighter or heavier; unpack and pack again to apply it.
 [/list]
 [h3]Unpack to get it out[/h3]
 [list]
@@ -294,6 +295,7 @@ With the sandbox option "Allow taking cargo out of capsules" on:
 [*] [b]Out only[/b]: items can only be taken out, never put in.
 [*] [b]Still locked[/b]: a freshly packed capsule opens after about 5 seconds, and a capsule waiting for an admin stays locked.
 [*] [b]Taken items[/b]: are removed from the record, so the tooltip, the preview and the admin panel list what is still inside, and only that comes back with the vehicle.
+[*] [b]Capsules that don't weigh their cargo[/b]: cargo in a capsule packed with "Capsule weight includes cargo" off still comes out only when you unpack the vehicle.
 [/list]
 === 🧰 Already-unpacked capsules
 [list]
@@ -366,6 +368,7 @@ The options are on the sandbox pages "Minidoracat Pack & Throw", "Minidoracat Pa
 [tr][td]Who can pack vehicles[/td][td]Key holders[/td][td]The key in the inventory or in the ignition; can be set to "Anyone" or "Admins only"[/td][/tr]
 [tr][td]Zombie attraction radius of the capsule sound[/td][td]0 tiles (0–50)[/td][td]0 means the capsule's pop attracts no zombies[/td][/tr]
 [tr][td]Allow taking cargo out of capsules[/td][td]Off[/td][td]When on, players can take cargo out of a loaded capsule without unpacking the vehicle, but can't put anything in; a capsule packed in the last ~5 seconds or left unconfirmed by a crash stays locked[/td][/tr]
+[tr][td]Capsule weight includes cargo[/td][td]On[/td][td]When on, a capsule holding a vehicle also weighs that vehicle's cargo. Off: vehicles packed from then on keep their cargo in the capsule without its weight, so the capsule weighs only itself; that cargo comes out only when the vehicle is unpacked, even with "Allow taking cargo out of capsules" on. Each capsule keeps the setting it was packed with[/td][/tr]
 [tr][td]Allow catching animals[/td][td]On[/td][td]Players can catch live animals in Pal Spheres, from the animal's menu or by throwing; off only stops catching animals, and Pal Spheres already holding one can still release it and be restored by admins[/td][/tr]
 [tr][td]Wild catch base chance[/td][td]50 (0–100)[/td][td]Base chance in percent that catching a wild animal works. The final chance is the base plus the Pal Sphere tier bonus and the three bonuses below, at most 100; on a miss the animal breaks free and the Pal Sphere is not used up. 0: wild animals can't be caught (bonuses can't save it); 100: always works. Tame animals and vehicles are not affected[/td][/tr]
 [tr][td]Pal Sphere lost on a failed catch[/td][td]Off[/td][td]When on, a wild animal that breaks free on the catch roll also takes the empty Pal Sphere: from the menu it leaves the inventory, a thrown one does not land. Any other miss keeps the Pal Sphere. When on, empty Pal Sphere tooltips show a warning line[/td][/tr]
@@ -427,7 +430,7 @@ The options are on the sandbox pages "Minidoracat Pack & Throw", "Minidoracat Pa
 [/list]
 [h3]Settings, Types and Loot[/h3]
 [list]
-[*] [b]Settings[/b]: the general sandbox options of this mod can be changed here (return an empty capsule, return an empty Pal Sphere, allow crafting empty capsules, allow crafting empty Pal Spheres, who can pack, the zombie attraction radius of the capsule sound, taking cargo out of capsules, allow catching animals, wild catch base chance, Pal Sphere lost on a failed catch, injured bonus, young bonus, unaware bonus, days to keep closed records); they take effect as soon as you press "Apply". Long lists scroll, and "Discard changes" and "Apply" stay at the bottom.
+[*] [b]Settings[/b]: the general sandbox options of this mod can be changed here (return an empty capsule, return an empty Pal Sphere, allow crafting empty capsules, allow crafting empty Pal Spheres, who can pack, the zombie attraction radius of the capsule sound, taking cargo out of capsules, capsule weight includes cargo, allow catching animals, wild catch base chance, Pal Sphere lost on a failed catch, injured bonus, young bonus, unaware bonus, days to keep closed records); they take effect as soon as you press "Apply". Long lists scroll, and "Discard changes" and "Apply" stay at the bottom.
 [*] [b]Types[/b]: one row per capsule type and per Pal Sphere tier with its "Use" (capsules pack vehicles, Pal Spheres catch animals) and "Loot" switches.
 [*] [b]Preview[/b]: press a row's "Preview": the panel steps aside and a capsule of that type is thrown beside you (the Sci-Fi effect for a Pal Sphere), seen by you only. It works before you press "Apply" too.
 [*] [b]List...[/b]: with Minidoracat Economy installed, opens a product draft for that empty capsule or Pal Sphere on the Economy Center's shop page; set the price there. One already on sale is skipped.
@@ -556,6 +559,7 @@ Select the record, check on site, tick "I checked on site", then press:
 [h3]I can't pick up the capsule?[/h3]
 [list]
 [*] The cargo is too heavy. Right-click the capsule on the ground and choose "Press the Button" to unpack it right there.
+[*] Servers can turn off the sandbox option "Capsule weight includes cargo": capsules packed after that weigh only themselves.
 [/list]
 [h3]Can I pack someone else's vehicle?[/h3]
 [list]

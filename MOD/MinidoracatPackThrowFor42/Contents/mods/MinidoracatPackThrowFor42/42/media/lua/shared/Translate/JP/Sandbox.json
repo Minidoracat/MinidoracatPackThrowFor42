@@ -18,6 +18,8 @@
     "Sandbox_MinidoracatPackThrow_ZombieSoundRadius_tooltip": "0 から 50 マス。0 にすると、カプセルが開く音でゾンビは寄ってきません。",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut": "カプセルから積み荷を取り出せる",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut_tooltip": "オンにすると、車両を展開しなくても、車両の入ったカプセルから積み荷を取り出せます。取り出すだけで、入れることはできません。収納したばかりのカプセルは約 5 秒後から取り出せます。サーバークラッシュで未確認のカプセルは取り出せないままです。",
+    "Sandbox_MinidoracatPackThrow_CargoWeight": "カプセルの重さに積み荷を含める",
+    "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip": "オンにすると、車両の入ったカプセルにはその車両の積み荷の重さも加わります。\nオフにすると、これから収納する車両の積み荷はカプセルに入ったまま重さに数えられず、カプセルの重さはカプセル自体だけになります。この積み荷は車両を展開したときにしか取り出せません（「カプセルから積み荷を取り出せる」がオンでも同じです）。\nカプセルは収納したときの設定のままです。変更しても、収納済みのカプセルは変わりません。",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays": "終了した記録の保存日数",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays_tooltip": "1〜90 日。展開済み・復元済み・無効のカプセルの記録は、最後の出来事からこの日数を過ぎると削除されます。収納中と未確認の記録は復元に必要なので常に残ります。\n記録はサーバーの Zomboid/Lua/MinidoracatPackThrow/ にワールドごとのフォルダで保存されます。ワールドのセーブと一緒にバックアップしてください。",
     "Sandbox_MinidoracatPackThrow_LootEnabled": "空のカプセル・パルスフィアが戦利品として出現",

@@ -18,6 +18,8 @@
     "Sandbox_MinidoracatPackThrow_ZombieSoundRadius_tooltip": "Od 0 do 50 pól. 0 oznacza, że dźwięk otwierania kapsuły nie przyciąga zombie.",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut": "Pozwól wyjmować ładunek z kapsuł",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut_tooltip": "Gdy włączone, gracze mogą wyjmować ładunek z kapsuły z pojazdem bez rozpakowywania go. Można tylko wyjmować, nie da się nic włożyć. Świeżo spakowana kapsuła otwiera się po około 5 sekundach; kapsuła niepotwierdzona z powodu awarii serwera pozostaje zablokowana.",
+    "Sandbox_MinidoracatPackThrow_CargoWeight": "Waga kapsuły obejmuje ładunek",
+    "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip": "Włączone: kapsuła z pojazdem waży też tyle, co ładunek tego pojazdu.\nWyłączone: pojazdy spakowane od teraz trzymają ładunek w kapsule bez jego wagi, więc kapsuła waży tylko tyle, co sama. Ten ładunek wychodzi dopiero po rozpakowaniu pojazdu, nawet przy włączonym „Pozwól wyjmować ładunek z kapsuł”.\nKażda kapsuła zachowuje ustawienie z chwili pakowania: zmiana nie dotyczy już spakowanych kapsuł.",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays": "Dni przechowywania zamkniętych zapisów",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays_tooltip": "Od 1 do 90 dni. Zapisy kapsuł rozpakowanych, przywróconych lub unieważnionych są usuwane, gdy ich ostatnie zdarzenie jest starsze niż ta liczba dni. Zapisy spakowanych i niepotwierdzonych kapsuł zostają zawsze: są potrzebne do przywrócenia tego, co spakowano.\nZapisy są na serwerze w Zomboid/Lua/MinidoracatPackThrow/, po jednym folderze na świat; rób ich kopię razem z zapisem gry.",
     "Sandbox_MinidoracatPackThrow_LootEnabled": "Puste kapsuły i Pal Sfery do znalezienia",

@@ -7,7 +7,8 @@
 --     checks); otherwise sealed cargo that left the capsule is put back when the player carries it (cargo lock).
 --     Vanilla item transfers are pure Java (ItemTransactionPacket -> TransactionManager.isConsistent/
 --     Transaction.update, no Lua hook on the source), so the server can only undo them, not refuse them.
---     Each capsule's sighting is noted (Store.seen).
+--     Each capsule's sighting is noted (Store.seen). Cargo is inside when it is in the capsule's container or in its
+--     cargo store (M.cargoItems; a light record keeps it in the store, where no vanilla transfer reaches).
 --   * Sandbox AllowCargoTakeOut and a confirmed PACKED record (Rules.cargoOpen): cargo that left stays out; the
 --     record drops it (sealed, manifest) so the tooltip, the preview and the admin panel list what is still inside.
 --   * Record retention (Index.prune) right after start, then every PRUNE_MS.
@@ -25,23 +26,21 @@ Guard.GROUND_RANGE = 2 -- squares around each player searched for capsules on th
 Guard.PRUNE_MS = 3600000 -- record retention runs right after start, then hourly
 Guard.PRUNE_BUCKETS = 8  -- buckets rewritten per pass while a retention backlog lasts
 
--- "full.Type*n,..." of everything inside inv (any depth), for logs and history.
-local function listing(inv)
+-- "full.Type*n,..." of a capsule's whole cargo (container and cargo store, any depth), for logs and history.
+local function listing(capsule)
     local counts = {}
-    local function walk(c)
-        local items = c:getItems()
-        for i = 0, items:size() - 1 do
-            local it = items:get(i)
-            counts[it:getFullType()] = (counts[it:getFullType()] or 0) + 1
-            if instanceof(it, "InventoryContainer") then walk(it:getInventory()) end
+    local function walk(it)
+        counts[it:getFullType()] = (counts[it:getFullType()] or 0) + 1
+        if instanceof(it, "InventoryContainer") then
+            local items = it:getInventory():getItems()
+            for i = 0, items:size() - 1 do walk(items:get(i)) end
         end
     end
-    walk(inv)
+    for _, it in ipairs(M.cargoItems(capsule)) do walk(it) end
     local parts = {}
     for ft, n in pairs(counts) do parts[#parts + 1] = ft .. "*" .. n end
     return #parts > 0 and table.concat(parts, ",") or "-"
 end
-Guard.listing = listing
 
 -- Puts an empty capsule of the same type where `capsule` is (same container, or the same square) and deletes it with
 -- its cargo.
@@ -68,7 +67,7 @@ end
 
 -- The capsule's cargo is a second copy (Store.isStale): swap the capsule for an empty one and record what went.
 function Guard.clear(player, capsule, capsuleId, snap, why)
-    local items = listing(capsule:getInventory())
+    local items = listing(capsule)
     replaceWithEmpty(player, capsule)
     Store.event(capsuleId, snap, "CLEARED", player, { why = why, items = items })
 end
@@ -89,12 +88,15 @@ function Guard.stale(player, capsule, capsuleId, snap, why)
     return true
 end
 
-local function idsIn(inv, set)
-    local items = inv:getItems()
-    for i = 0, items:size() - 1 do
-        local it = items:get(i)
+-- Ids of every item in `list` (a Lua array) and inside it, any depth.
+local function idsIn(list, set)
+    for _, it in ipairs(list) do
         set[it:getID()] = true
-        if instanceof(it, "InventoryContainer") then idsIn(it:getInventory(), set) end
+        if instanceof(it, "InventoryContainer") then
+            local items, kids = it:getInventory():getItems(), {}
+            for i = 0, items:size() - 1 do kids[#kids + 1] = items:get(i) end
+            idsIn(kids, set)
+        end
     end
     return set
 end
@@ -105,7 +107,7 @@ local reported = {} -- "capsuleId:itemId" -> true: cargo that left and could not
 -- items the player does not carry are only logged.
 local function lock(player, capsule, capsuleId, sealed)
     if not sealed or #sealed == 0 then return end
-    local here = idsIn(capsule:getInventory(), {})
+    local here = idsIn(M.cargoItems(capsule), {})
     local inv, box = player:getInventory(), capsule:getInventory()
     local back, gone = {}, {}
     for _, itemId in ipairs(sealed) do
@@ -120,7 +122,7 @@ local function lock(player, capsule, capsuleId, sealed)
                 box:AddItem(item)
                 sendAddItemToContainer(box, item)
                 back[#back + 1] = item:getFullType() .. "#" .. itemId
-                idsIn(box, here)
+                idsIn({ item }, here)
             elseif not reported[capsuleId .. ":" .. itemId] then
                 reported[capsuleId .. ":" .. itemId] = true
                 gone[#gone + 1] = (item and (item:getFullType() .. "#equipped#") or "#") .. itemId
@@ -139,8 +141,8 @@ end
 -- carries it, "#id" when it went elsewhere).
 local function sync(player, capsule, capsuleId, sealed)
     if not sealed or #sealed == 0 then return end
-    local box = capsule:getInventory()
-    local here = idsIn(box, {})
+    local cargo = M.cargoItems(capsule)
+    local here = idsIn(cargo, {})
     local kept, taken = {}, {}
     for _, itemId in ipairs(sealed) do
         if here[itemId] then
@@ -154,11 +156,8 @@ local function sync(player, capsule, capsuleId, sealed)
     if #kept == #sealed then return end
     local snap = Store.read(capsuleId)
     if not snap then return end
-    local manifest, items = {}, box:getItems()
-    for i = 0, items:size() - 1 do
-        local ft = items:get(i):getFullType()
-        manifest[ft] = (manifest[ft] or 0) + 1
-    end
+    local manifest = {}
+    for _, it in ipairs(cargo) do manifest[it:getFullType()] = (manifest[it:getFullType()] or 0) + 1 end
     local parts = {}
     for name, n in pairs(taken) do parts[#parts + 1] = name .. "*" .. n end
     snap.sealed, snap.manifest = kept, manifest

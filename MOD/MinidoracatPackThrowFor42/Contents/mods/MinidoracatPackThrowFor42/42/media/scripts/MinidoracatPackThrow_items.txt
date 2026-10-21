@@ -79,7 +79,10 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowShockHand,
     }
 
-    /* Capsules holding a vehicle. Cargo travels inside as the original items; full weight counts (no WeightReduction).
+    /* Capsules holding a vehicle. Cargo travels inside as the original items: in the container, where its full weight
+       counts (no WeightReduction), or, packed while sandbox CargoWeight is off, in the Resources component (resource
+       `cargo`), which the engine saves with the item like a container's contents but leaves out of the weight
+       (InventoryContainer.getContentsWeight reads the container only; shared/MinidoracatPackThrow/Core.lua M.cargoStore).
        MaxItemSize keeps players from putting anything in; the server adds cargo with AddItem, which skips the check.
        Container, not Tool: Minidoracat Economy rebuilds traded items with a new item ID (the record key), and its
        default and production whitelists leave Container out; server/Economy.lua registers each type with Economy
@@ -95,6 +98,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowCartoonLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     item LoadedCapsuleReal
@@ -107,6 +115,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowRealLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     item LoadedCapsuleDust
@@ -119,6 +132,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowDustLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     item LoadedCapsuleSteam
@@ -131,6 +149,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowSteamLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     item LoadedCapsuleSciFi
@@ -143,6 +166,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowSciFiLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     item LoadedCapsuleMagic
@@ -155,6 +183,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowMagicLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     item LoadedCapsuleShock
@@ -167,6 +200,11 @@ module MinidoracatPackThrow
         StaticModel = MinidoracatPackThrow.PackThrowShockLoadedHand,
         Capacity = 1,
         MaxItemSize = 0.01,
+
+        component Resources
+        {
+            cargo = Item@Input@1000000@StackAny,
+        }
     }
 
     /* Pal Spheres (animals only), in the order of M.TYPES: the same weight as a capsule, a loaded one built like a

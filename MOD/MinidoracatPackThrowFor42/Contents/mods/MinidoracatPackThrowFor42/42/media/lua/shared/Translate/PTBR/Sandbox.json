@@ -18,6 +18,8 @@
     "Sandbox_MinidoracatPackThrow_ZombieSoundRadius_tooltip": "De 0 a 50 quadrados. 0 significa que o som da cápsula abrindo não atrai zumbis.",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut": "Permitir tirar a carga das cápsulas",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut_tooltip": "Se ativado, os jogadores podem tirar a carga de uma cápsula com veículo sem liberá-lo. Só dá para tirar, não para colocar. Uma cápsula recém-guardada abre depois de uns 5 segundos; uma cápsula não confirmada por uma queda do servidor continua bloqueada.",
+    "Sandbox_MinidoracatPackThrow_CargoWeight": "O peso da cápsula inclui a carga",
+    "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip": "Ativado: uma cápsula com veículo também pesa a carga desse veículo.\nDesativado: os veículos guardados a partir de agora levam a carga na cápsula sem o peso dela, então a cápsula pesa só o próprio peso. Essa carga só sai quando o veículo é liberado, mesmo com “Permitir tirar a carga das cápsulas” ativado.\nCada cápsula mantém o ajuste com que foi guardada: mudar isso não altera as cápsulas já guardadas.",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays": "Dias para manter registros encerrados",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays_tooltip": "De 1 a 90 dias. Registros de cápsulas liberadas, restauradas ou anuladas são apagados quando o último evento passa desse prazo. Registros guardados e não confirmados ficam sempre: são necessários para restaurar o que foi guardado.\nOs registros ficam no servidor em Zomboid/Lua/MinidoracatPackThrow/, uma pasta por mundo; faça backup junto com o save do mundo.",
     "Sandbox_MinidoracatPackThrow_LootEnabled": "Cápsulas e Esferas de Pal vazias aparecem como itens",

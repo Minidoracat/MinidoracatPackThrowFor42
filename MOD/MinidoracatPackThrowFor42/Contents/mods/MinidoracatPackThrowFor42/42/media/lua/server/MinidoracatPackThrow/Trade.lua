@@ -5,7 +5,8 @@
 -- (v1.snapshotItem) when Economy takes the capsule; when Economy hands a new capsule over (rebuilt: before it puts it
 -- anywhere) the cargo is rebuilt into it (v1.rebuildItem) and the capsule and every cargo item get their old ids back
 -- (InventoryItem.setID, as vanilla does when it swaps a world item: IsoWorldInventoryObject.java:125). The record, its
--- cargo map (part per item id), the sealed list and the duplicate-capsule rules then hold as before.
+-- cargo map (part per item id), the sealed list and the duplicate-capsule rules then hold as before. A light record's
+-- cargo (sandbox CargoWeight off at packing) goes through the container for the codec and back into the cargo store.
 -- The escrowed cargo stays in the record until the next listing or state change: a delivery Economy repeats after a
 -- crash rolled the world back gets the same capsule again, and of two copies only one can ever unpack.
 if isClient() then return end
@@ -13,6 +14,7 @@ require "MinidoracatPackThrow/Core"
 require "MinidoracatPackThrow/Store"
 require "MinidoracatPackThrow/Query"
 require "MinidoracatPackThrow/Condition"
+require "MinidoracatPackThrow/Snapshot"
 local M = MinidoracatPackThrow
 local Store = M.Store
 local Trade = {}
@@ -71,17 +73,18 @@ function Trade.check(item, player)
         local s, why = eco.snapshotItem(it, { contents = true })
         if not s then bad = { code = "CARGO", type = it:getFullType(), why = tostring(why) } end
     end
-    local function walk(list)
-        for i = 0, list:size() - 1 do
-            local it = list:get(i)
-            try(it)
-            local parts = weaponParts(it)
-            for j = 0, (parts and parts:size() or 0) - 1 do try(parts:get(j)) end
-            local kids = inner(it)
-            if kids then walk(kids) end
-        end
+    local walk
+    local function visit(it)
+        try(it)
+        local parts = weaponParts(it)
+        for j = 0, (parts and parts:size() or 0) - 1 do try(parts:get(j)) end
+        local kids = inner(it)
+        if kids then walk(kids) end
     end
-    walk(item:getInventory():getItems())
+    walk = function(list)
+        for i = 0, list:size() - 1 do visit(list:get(i)) end
+    end
+    for _, it in ipairs(M.cargoItems(item)) do visit(it) end
     if bad then return false, bad end
     if n > Trade.MAX_CARGO then return false, { code = "TOO_MANY", n = n, max = Trade.MAX_CARGO } end
     return true
@@ -174,25 +177,31 @@ function Trade.escrow(item, player, channel, ref)
     if not ok then return nil, detail end
     local eco, id = economy(), item:getID()
     local snap = Store.read(id)
-    local cargo
+    -- The capsule's own weight comes from its script: on a dedicated server this mod's items have no display name (the
+    -- name is the full type) and such an item weighs 0 (InventoryItem.getActualWeightUnmodded, InventoryItem.java:2740-
+    -- 2742), so getUnequippedWeight left the capsule out (an animal capsule was listed at 0.0, vcap-tam-1012c). Read
+    -- before a light capsule's cargo leaves its store below: the rebuilt one puts it back there.
+    local weight = item:getScriptItem():getActualWeight() + item:getContentsWeight()
+    local cargo, moved = nil, 0
     if snap.kind ~= "animal" then
         local box = item:getInventory()
+        moved = M.Snapshot.unstoreCargo(item)
         detachAll(box, box, eco, snap)
         local err
         cargo, err = pack(box:getItems(), eco)
-        if not cargo then return nil, err end
+        if not cargo then
+            if moved > 0 then M.Snapshot.storeCargo(item) end
+            return nil, err
+        end
     end
     local now, by = getTimestampMs(), player and player:getUsername() or "-"
     snap.escrow = { active = true, t = now, by = by, channel = tostring(channel), ref = tostring(ref), cargo = cargo }
     snap.seen = { t = now, where = "economy", by = by }
     if not Store.event(id, snap, "ESCROW", player, { why = tostring(channel) .. " " .. tostring(ref) }) then
+        if moved > 0 then M.Snapshot.storeCargo(item) end
         return nil, { code = "OTHER" }
     end
     local t = M.typeOf(item)
-    -- The capsule's own weight comes from its script: on a dedicated server this mod's items have no display name (the
-    -- name is the full type) and such an item weighs 0 (InventoryItem.getActualWeightUnmodded, InventoryItem.java:2740-
-    -- 2742), so getUnequippedWeight left the capsule out (an animal capsule was listed at 0.0, vcap-tam-1012c).
-    local weight = item:getScriptItem():getActualWeight() + item:getContentsWeight()
     return { capsuleId = id, view = Trade.view(id, snap, t and t.id), weight = weight }
 end
 
@@ -211,6 +220,7 @@ function Trade.rebuilt(ext, item, player, ctx)
     item:setID(id)
     local lost = {}
     refill(item:getInventory(), snap.escrow.cargo or {}, economy(), lost)
+    if snap.light then M.Snapshot.storeCargo(item) end
     if #lost > 0 then M.log("TRADE_LOST capsule=" .. id .. " to=" .. to .. " items=" .. table.concat(lost, ",")) end
     ctx = type(ctx) == "table" and ctx or {}
     snap.escrow.last = { kind = ctx.kind, ref = ctx.ref, to = to, t = getTimestampMs() }

@@ -32,6 +32,11 @@ option MinidoracatPackThrow.ZombieSoundRadius
 option MinidoracatPackThrow.AllowCargoTakeOut
 {type = boolean, default = false, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_AllowCargoTakeOut,}
 
+/* 膠囊重量包含貨物（Rules.cargoWeighs）。關掉後新收的車，貨物原物件放進膠囊的 Resources 元件（M.cargoStore），膠囊只算本身重量；
+   這種膠囊的貨物要展開車才拿得到（AllowCargoTakeOut 對它沒作用）。只看收車當下（紀錄 light）：已收好的膠囊照舊。預設開（使用者 2026-10-21） */
+option MinidoracatPackThrow.CargoWeight
+{type = boolean, default = true, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_CargoWeight,}
+
 /* 玩家可以把世界上活著的動物收進帕魯球（Rules.animalsOn）。關掉只擋抓動物：已裝了動物的帕魯球照樣能放出、管理員補回 */
 option MinidoracatPackThrow.AllowAnimals
 {type = boolean, default = true, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_AllowAnimals,}

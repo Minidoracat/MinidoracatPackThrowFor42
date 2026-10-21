@@ -4,13 +4,13 @@
 --     sighting, go to the recorded spot or to the last sighting, restore, and the verdicts "car is there, close" /
 --     "car is gone" for records a crash left uncertain.
 --     Every action is a server command (server/AdminCommands.lua) checked there; this file only shows replies.
---   Settings, Types and Loot: every sandbox option of the mod (Settings: return an empty one, who can pack, the
---     zombie radius of the capsule sound, taking cargo out, animals, the wild catch chance and its three bonuses, days
---     to keep closed records; Types: per capsule type and Pal Sphere tier the use and loot switches, "List..." into
---     Minidoracat Economy's shop and a preview played here only; Loot: the master switch and the seven places (four
---     for capsules, three for spheres) with their weights). They are the sandbox options of the vanilla sandbox pages
---     and are sent the same way (copy, set, sendToServer; ISServerSandboxOptionsUI.lua:762-771), so the server checks
---     Capability.SandboxOptions; server/Loot.lua rebuilds the loot tables within a second.
+--   Settings, Types and Loot: every sandbox option of the mod (Settings: return an empty one, crafting, who can pack,
+--     the zombie radius of the capsule sound, taking cargo out, whether cargo weighs, animals, the wild catch chance
+--     and its three bonuses, days to keep closed records; Types: per capsule type and Pal Sphere tier the use and loot
+--     switches, "List..." into Minidoracat Economy's shop and a preview played here only; Loot: the master switch and
+--     the seven places (four for capsules, three for spheres) with their weights). They are the sandbox options of the
+--     vanilla sandbox pages and are sent the same way (copy, set, sendToServer; ISServerSandboxOptionsUI.lua:762-771),
+--     so the server checks Capability.SandboxOptions; server/Loot.lua rebuilds the loot tables within a second.
 --   The window is opaque (text over other windows stayed under 4.5:1; design vcap-types-1012 review).
 -- Entry: Dock (visible for admins, player option "show in the Dock"); without the Dock, the world context menu.
 require "MinidoracatPackThrow/Core"
@@ -1028,6 +1028,7 @@ Panel.GENERAL = {
     { key = "PackPermission", kind = "choice", count = 3, default = 1 },
     { key = "ZombieSoundRadius", kind = "int", min = 0, max = 50, default = 0 },
     { key = "AllowCargoTakeOut", kind = "bool", default = false },
+    { key = "CargoWeight", kind = "bool", default = true },
     { key = "AllowAnimals", kind = "bool", default = true },
     { key = "WildCaptureChance", kind = "int", min = 0, max = 100, default = 50, pct = true },
     { key = "WildCaptureFailConsumes", kind = "bool", default = false },

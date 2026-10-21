@@ -18,6 +18,8 @@
     "Sandbox_MinidoracatPackThrow_ZombieSoundRadius_tooltip": "0 到 50 格。0 表示膠囊彈開的聲音不會引來殭屍。",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut": "可以從膠囊拿出貨物",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut_tooltip": "開啟時，玩家不用展開車也能從裝了車的膠囊拿出貨物，只能拿出、不能放進去。剛收好的膠囊要等約 5 秒才能拿；當機前未確認的膠囊仍然拿不出來。",
+    "Sandbox_MinidoracatPackThrow_CargoWeight": "膠囊重量包含貨物",
+    "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip": "開啟時，裝了車的膠囊連車上貨物的重量一起算。\n關掉後，之後收的車照樣把貨物收進膠囊，但貨物不算重量，膠囊只有本身的重量；這些貨物要展開車才拿得到，「可以從膠囊拿出貨物」開著也一樣。\n每顆膠囊照收車當時的設定：改這個選項不會改變已經收好的膠囊。",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays": "結束紀錄保留天數",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays_tooltip": "1 到 90 天。已展開、已補回、已作廢的膠囊紀錄，最後一筆事件超過這個天數就刪掉；收起中與當機前未確認的紀錄一律保留，補回時要用。\n紀錄存在伺服器的 Zomboid/Lua/MinidoracatPackThrow/，每個世界一個資料夾，請和世界存檔一起備份。",
     "Sandbox_MinidoracatPackThrow_LootEnabled": "空膠囊與空帕魯球出現在戰利品",

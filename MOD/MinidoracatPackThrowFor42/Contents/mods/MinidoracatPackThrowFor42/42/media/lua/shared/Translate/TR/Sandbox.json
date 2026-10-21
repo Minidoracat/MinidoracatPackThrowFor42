@@ -18,6 +18,8 @@
     "Sandbox_MinidoracatPackThrow_ZombieSoundRadius_tooltip": "0 ile 50 kare arası. 0, kapsülün açılma sesinin zombileri çekmediği anlamına gelir.",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut": "Kapsüllerden yük almaya izin ver",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut_tooltip": "Açıksa oyuncular, aracı kapsülden çıkarmadan araçlı bir kapsüldeki yükü alabilir. Yük yalnızca alınabilir, içine bir şey konamaz. Aracın yeni konduğu kapsül yaklaşık 5 saniye sonra açılır; sunucu çökmesi yüzünden onaylanmamış bir kapsül kilitli kalır.",
+    "Sandbox_MinidoracatPackThrow_CargoWeight": "Kapsül ağırlığına yük dahil",
+    "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip": "Açıkken araçlı bir kapsül, o aracın yükünün ağırlığını da taşır.\nKapalıyken bundan sonra kapsüle konan araçların yükü kapsülde ağırlıksız durur; kapsül yalnızca kendi ağırlığı kadardır. Bu yük ancak araç kapsülden çıkarılınca alınabilir, “Kapsüllerden yük almaya izin ver” açık olsa da böyledir.\nHer kapsül konduğu andaki ayarı korur: değiştirmek zaten dolu kapsülleri etkilemez.",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays": "Kapanan kayıtların saklanacağı gün",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays_tooltip": "1 ile 90 gün arası. Açılmış, geri getirilmiş veya iptal edilmiş kapsül kayıtları, son olaydan bu kadar gün geçince silinir. Kapsülde duran ve onaylanmamış kayıtlar her zaman saklanır: geri getirmek için gerekir.\nKayıtlar sunucuda Zomboid/Lua/MinidoracatPackThrow/ içinde, her dünya için bir klasörde durur; dünya kaydıyla birlikte yedekleyin.",
     "Sandbox_MinidoracatPackThrow_LootEnabled": "Boş kapsüller ve Pal Küreleri ganimet olarak çıkar",

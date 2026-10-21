@@ -83,6 +83,30 @@ local function newContainer(holder)
     end
     return c
 end
+-- 膠囊的貨物倉（物品腳本的 Resources 元件，M.cargoStore）：只做用到的方法。引擎的 offerItem 遇到還在容器裡的物品會自己移除並
+-- 逐件送封包（ResourceItem.java:328-346），這裡記下每次呼叫的參數與物品在不在容器裡，讓測試抓「沒先 Remove」與同步
+ComponentType = { Resources = "Resources" }
+ArrayList = { new = function()
+    local l = {}
+    return { add = function(_, x) l[#l + 1] = x end, size = function() return #l end, get = function(_, i) return l[i + 1] end }
+end }
+local function newStore()
+    local s = { list = {}, offers = {} }
+    function s:getStoredItems() return javaList(self.list) end
+    function s:isEmpty() return #self.list == 0 end
+    function s:offerItem(it, _, force, sync)
+        self.offers[#self.offers + 1] = { force = force, sync = sync, inContainer = it.container ~= nil }
+        if it.container then it.container:Remove(it) end
+        self.list[#self.list + 1] = it
+        return nil
+    end
+    function s:removeAllItems(out)
+        for _, it in ipairs(self.list) do out:add(it) end
+        self.list = {}
+        return out
+    end
+    return s
+end
 local function newItem(fullType, isContainer)
     nextItemId = nextItemId + 1
     local it = { id = nextItemId, type = fullType }
@@ -94,6 +118,13 @@ local function newItem(fullType, isContainer)
     if isContainer then
         it.inv = newContainer(it)
         function it:getInventory() return self.inv end
+    end
+    -- only loaded capsules carry the component (items script); other items answer nil like the engine
+    if fullType:find("^MinidoracatPackThrow%.LoadedCapsule") then it.store = newStore() end
+    function it:getComponent(t)
+        if t ~= ComponentType.Resources or not self.store then return nil end
+        local store = self.store
+        return { getResource = function(_, id) return id == "cargo" and store or nil end }
     end
     return it
 end
@@ -1718,6 +1749,156 @@ do (function()
         "rev 6 七種膠囊與四級帕魯球（LoadedSphere<等級>）各註冊一次；被拒或只有 rev 5 時每種退回 blockItemType（"
         .. #calls .. " 次呼叫）")
     MinidoracatEconomy = nil
+end)() end
+
+print("CargoWeight：關掉時新收的車，貨物原物件放進膠囊的貨物倉（膠囊只算本身重量）；展開、Guard、清空、Economy 交易都認得；開著照舊")
+do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
+    require "MinidoracatPackThrow/Pack"
+    local S, Pack, R = M.Snapshot, M.Pack, M.Rules
+    local saved = { whyNot = Pack.whyNot, capture = S.capture, fx = M.Fx.broadcast, sv = SandboxVars }
+    Pack.whyNot = function() return nil end
+    M.Fx.broadcast = function() end
+    -- a truck with a bed and a glove box; loaded: water and a school bag (pencil inside) in the bed, a lighter in the box
+    local function truck(loaded)
+        local v = { parts = {} }
+        for _, id in ipairs({ "TruckBed", "GloveBox" }) do
+            local p = { id = id, inv = newContainer(nil) }
+            function p:getId() return self.id end
+            function p:getItemContainer() return self.inv end
+            v.parts[#v.parts + 1] = p
+        end
+        local sq = { getX = function() return 10 end, getY = function() return 20 end, getZ = function() return 0 end }
+        function sq:AddWorldInventoryItem(it) v.dropped = it; return it end
+        function v:getSquare() return sq end
+        function v:getSqlId() return 9 end
+        function v:getPartCount() return #self.parts end
+        function v:getPartByIndex(i) return self.parts[i + 1] end
+        function v:getPartById(id) for _, p in ipairs(self.parts) do if p.id == id then return p end end end
+        function v:getCurrentKey() return nil end
+        function v:permanentlyRemove() self.removed = true end
+        if loaded then
+            local c = { water = newItem("Base.WaterBottle"), bag = newItem("Base.Bag_Schoolbag", true),
+                pencil = newItem("Base.Pencil"), lighter = newItem("Base.Lighter") }
+            v.parts[1].inv:AddItem(c.water)
+            v.parts[1].inv:AddItem(c.bag)
+            c.bag.inv:AddItem(c.pencil)
+            v.parts[2].inv:AddItem(c.lighter)
+            v.cargo = c
+        end
+        return v
+    end
+    -- the cargo fields of Snapshot.capture (nothing else of the record is read here)
+    S.capture = function(v)
+        local snap = { script = "Base.PickUpTruck", parts = {}, cargo = {}, manifest = {}, sealed = {}, skipped = {} }
+        for _, p in ipairs(v.parts) do
+            for _, it in ipairs(p.inv.list) do
+                snap.cargo[it.id] = p.id
+                snap.manifest[it.type] = (snap.manifest[it.type] or 0) + 1
+                snap.sealed[#snap.sealed + 1] = it.id
+                for _, kid in ipairs(it.inv and it.inv.list or {}) do snap.sealed[#snap.sealed + 1] = kid.id end
+            end
+        end
+        return snap
+    end
+    local packer = newPlayer("packer", false)
+    local function pack(light)
+        SandboxVars = light and { MinidoracatPackThrow = { CargoWeight = false } } or nil
+        local v = truck(true)
+        local res = Pack.pack(packer, v, {})
+        return v.dropped, Store.read(res.capsuleId), v.cargo, res
+    end
+    quiet = true
+    SandboxVars = nil
+    local onByDefault = R.cargoWeighs()
+    local heavy, heavySnap, _, heavyRes = pack(false)
+    local light, lightSnap, c, lightRes = pack(true)
+    local off = not R.cargoWeighs()
+    local clean = #light.store.offers == 3
+    for _, o in ipairs(light.store.offers) do clean = clean and o.force == true and o.sync == false and not o.inContainer end
+    local fresh = truck(false)
+    local packedLight = lightSnap.light == true and #light.inv.list == 0 and #light.store.list == 3
+        and c.water.container == nil and c.pencil.container == c.bag.inv
+    local back = S.restoreCargo(light, fresh, lightSnap)
+    local bed, box = fresh.parts[1].inv.list, fresh.parts[2].inv.list
+    quiet = false
+    check(onByDefault and off, "Rules.cargoWeighs：預設算重量，沙盒 CargoWeight=false 才不算")
+    check(heavyRes.ok and #heavy.inv.list == 3 and #heavy.store.list == 0 and heavySnap.light == nil,
+        "開著（預設）：貨物照舊放進膠囊容器，紀錄沒有 light")
+    check(lightRes.ok and packedLight,
+        "關掉：三件貨物進貨物倉（背包連同鉛筆），膠囊容器是空的（引擎只算容器的重量），紀錄記 light")
+    check(clean, "放進貨物倉前先從容器移除、不同步（force、sync=false：不會逐件送移除封包，混裝的清單也不走 saveSync）")
+    check(back.home == 3 and back.other == 0 and back.ground == 0 and #light.store.list == 0
+        and bed[#bed - 1] == c.water and bed[#bed] == c.bag and box[1] == c.lighter,
+        "展開：貨物倉的貨物回到原本的車上位置（車斗：水瓶、背包；置物箱：打火機），貨物倉清空")
+
+    -- Guard: the store counts as inside (no CARGO_LOCK; no CARGO_TAKEN with taking out allowed); clearing lists it
+    quiet = true
+    local g, gSnap = pack(true)
+    local gid = g.id
+    Store.settle(gid)
+    packer.inv:AddItem(g)
+    Guard.pass(packer)
+    SandboxVars.MinidoracatPackThrow.AllowCargoTakeOut = true
+    Guard.pass(packer)
+    local evs = {}
+    for _, e in ipairs(Store.read(gid).history) do evs[#evs + 1] = e.ev end
+    local afterTake = Store.read(gid)
+    local void = Store.read(gid)
+    void.state = "VOID"
+    Store.write(gid, void)
+    Guard.pass(packer)
+    local h = Store.read(gid).history
+    quiet = false
+    check(table.concat(evs, ","):find("CARGO", 1, true) == nil and #g.store.list == 3 and #afterTake.sealed == #gSnap.sealed,
+        "Guard：貨物倉裡的貨物算在膠囊裡，不放回也不當成拿走（拿出模式開著也一樣，紀錄不變）：" .. table.concat(evs, ","))
+    check(packer.inv:getItemWithIDRecursiv(gid) == nil and h[#h].ev == "CLEARED" and h[#h].items:find("Base.Pencil*1", 1, true)
+        and h[#h].items:find("Base.Lighter*1", 1, true), "已作廢的輕量膠囊照樣清空，CLEARED 列出貨物倉裡的貨物：" .. tostring(h[#h].items))
+
+    -- Economy: the cargo goes through the container for the codec and back into the store of the capsule handed over
+    local eco = { API_MAJOR = 1, API_REVISION = 6, CAPABILITIES = { uniqueItemTypes = true },
+        snapshotItem = function(it) return { type = it.type } end,
+        rebuildItem = function(s) return instanceItem(s.type) end,
+        detachParts = function() return 0 end }
+    MinidoracatEconomy = { v1 = eco }
+    require "MinidoracatPackThrow/Trade"
+    local function listed()
+        local cap = pack(true)
+        Store.settle(cap.id)
+        function cap:getContentsWeight() return #self.inv.list end -- the engine weighs the container only
+        function cap:getScriptItem() return { getActualWeight = function() return 0.2 end } end
+        return cap
+    end
+    quiet = true
+    local t = listed()
+    local ext = M.Trade.escrow(t, packer, "market", "L-7")
+    local held = Store.read(t.id)
+    local rebuilt = instanceItem(M.TYPES[1].loaded)
+    M.Trade.rebuilt(ext, rebuilt, packer, { kind = "market", ref = "L-7" })
+    local refused = listed()
+    dropWrites = true -- the escrow record cannot be written: Economy keeps out, the cargo goes back into the store
+    local noExt = M.Trade.escrow(refused, packer, "market", "L-8")
+    dropWrites = false
+    quiet = false
+    check(ext and ext.weight == 0.2 and held.escrow and #held.escrow.cargo == 3 and held.escrow.cargo[2].c
+        and held.escrow.cargo[2].c[1].s.type == "Base.Pencil", "Economy：輕量膠囊以本身重量上架；貨物（含背包裡的鉛筆）照樣存進紀錄")
+    check(rebuilt.id == t.id and #rebuilt.inv.list == 0 and #rebuilt.store.list == 3,
+        "Economy 交回的新膠囊：原編號，貨物放回貨物倉（還是只算本身重量）")
+    check(noExt == nil and #refused.inv.list == 0 and #refused.store.list == 3, "交出時紀錄寫不進去：Economy 不收，貨物回到貨物倉")
+
+    -- 16 languages: the option's label and tooltip
+    local missing = {}
+    for _, lang in ipairs({ "AR", "CH", "CN", "DE", "EN", "ES", "ES_CL", "ES_MX", "FR", "JP", "KO", "PL", "PT", "PTBR", "RU", "TR" }) do
+        local h2 = io.open(MEDIA .. "/shared/Translate/" .. lang .. "/Sandbox.json", "rb")
+        local sb = h2 and M.Json.decode(h2:read("*a")) or {}
+        if h2 then h2:close() end
+        for _, k in ipairs({ "Sandbox_MinidoracatPackThrow_CargoWeight", "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip" }) do
+            if not sb[k] then missing[#missing + 1] = lang .. ":" .. k:gsub("Sandbox_MinidoracatPackThrow_", "") end
+        end
+    end
+    check(#missing == 0, "16 種語言都有 CargoWeight 的標籤與說明（" .. table.concat(missing, ",", 1, math.min(#missing, 12)) .. "）")
+
+    MinidoracatEconomy, SandboxVars = nil, saved.sv
+    Pack.whyNot, S.capture, M.Fx.broadcast = saved.whyNot, saved.capture, saved.fx
 end)() end
 
 -- ===== 介面版面：管理面板訊息依欄寬換行、詳情按鈕列放不下就換列（真框架 Text.wrap／fit，實際譯文）=====

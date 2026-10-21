@@ -18,6 +18,8 @@
     "Sandbox_MinidoracatPackThrow_ZombieSoundRadius_tooltip": "0 to 50 tiles. 0 means the capsule popping open does not attract zombies.",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut": "Allow taking cargo out of capsules",
     "Sandbox_MinidoracatPackThrow_AllowCargoTakeOut_tooltip": "When on, players can take cargo out of a loaded capsule without unpacking the vehicle. Items can only be taken out, never put in. A freshly packed capsule opens after about 5 seconds; a capsule left unconfirmed by a server crash stays locked.",
+    "Sandbox_MinidoracatPackThrow_CargoWeight": "Capsule weight includes cargo",
+    "Sandbox_MinidoracatPackThrow_CargoWeight_tooltip": "On: a capsule holding a vehicle also weighs that vehicle's cargo.\nOff: vehicles packed from now on keep their cargo in the capsule without its weight, so the capsule weighs only itself. That cargo comes out only when the vehicle is unpacked, even with \"Allow taking cargo out of capsules\" on.\nEach capsule keeps the setting it was packed with: changing it leaves capsules already packed as they are.",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays": "Days to keep closed records",
     "Sandbox_MinidoracatPackThrow_RecordRetentionDays_tooltip": "1 to 90 days. Records of capsules that were unpacked, restored or voided are deleted once their last event is older than this. Packed and unconfirmed records are always kept: they are needed to restore what was packed.\nRecords live on the server in Zomboid/Lua/MinidoracatPackThrow/, one folder per world; back them up with the world save.",
     "Sandbox_MinidoracatPackThrow_LootEnabled": "Empty capsules and Pal Spheres appear as loot",

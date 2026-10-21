@@ -33,6 +33,13 @@ function Rules.cargoOpen(rec)
     return Rules.sandbox().AllowCargoTakeOut == true and rec ~= nil and rec.state == "PACKED" and rec.settled == true
 end
 
+-- Sandbox CargoWeight (default on; user 2026-10-21): a packed vehicle's cargo goes into the capsule's container and
+-- weighs with it. Off: into its cargo store (M.cargoStore), so the capsule weighs only itself and nothing can be taken
+-- out before unpacking. Read when packing (Pack.pack writes snap.light); capsules packed earlier keep theirs.
+function Rules.cargoWeighs()
+    return Rules.sandbox().CargoWeight ~= false
+end
+
 -- Admin on either side: the server asks the connection (M.isAdmin, SP host = admin); an MP client reads its own role.
 function Rules.isAdmin(player)
     if not isClient() then return M.isAdmin(player) end
