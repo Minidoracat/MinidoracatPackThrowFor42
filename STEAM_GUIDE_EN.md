@@ -21,6 +21,7 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 [*] [b]Too heavy to pick up?[/b] Right-click it on the ground and choose "Press the Button"; the vehicle appears next to it.
 [/olist]
 === 🧰 Getting capsules and Pal Spheres
+{{img:03-lineup-en.jpg}}
 [list]
 [*] [b]Loot[/b]: all seven kinds of empty capsule show up in containers at mechanic shops, car supply stores and gas station repair bays; home garages are off by default. Each location's share is split evenly over the types that are on. Empty Pal Spheres have three locations of their own: barns, pet stores and hunting lockers (all on by default), and the four tiers are split 8:4:2:1 by rarity, so the better ones are rarer. Servers can toggle each location and tune its weight; see "Sandbox options and defaults".
 [*] [b]Crafting[/b]: once the server turns on "Allow crafting empty capsules" or "Allow crafting empty Pal Spheres" (both off by default), you can make them next to a table or similar surface; see "Crafting" below for the parts.
@@ -53,7 +54,7 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 [*] [b]A type an admin switched off[/b]: can't pack vehicles any more; loaded ones still throw and unpack with the button. Its empty capsule's tooltip says so. Capsules only take vehicles; animals need a Pal Sphere.
 [/list]
 === 🧰 Packing a vehicle
-{{img:02-pack-menu-en.jpg}}
+{{img:04-pack-menu-en.jpg}}
 [h3]Menu and requirements[/h3]
 [list]
 [*] [b]The menu[/b]: right-click a vehicle and "Pack into Capsule" is at the end of the menu.
@@ -96,6 +97,7 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 [/list]
 Vanilla and modded vehicles such as KI5's work the same way.
 === 🧰 Catching an animal with a Pal Sphere
+{{img:02-capture-en.jpg}}
 [h3]Four Pal Sphere tiers[/h3]
 [list]
 [*] [b]The tiers[/b]: Pal Sphere, Mega Sphere, Giga Sphere and Legendary Sphere, in blue, green, yellow and purple.
@@ -176,7 +178,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [/list]
 === 🧰 Throwing and pressing
 [h3]Throwing a capsule[/h3]
-{{img:03-throw-cursor-en.jpg}}
+{{img:05-throw-cursor-en.jpg}}
 [list]
 [*] [b]How[/b]: with the capsule on you, right-click it in the inventory and choose "Throw Capsule" to get the landing cursor. Left-click to throw, right-click to cancel.
 [*] [b]Turning[/b]: while the cursor is open, a standing character turns toward the aimed square (as with vanilla aiming); a left-click throws at once, with no wait for the turn.
@@ -185,7 +187,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [*] [b]Red outline[/b]: it doesn't fit, with the reason: too far, can't see there, not loaded yet, another vehicle, a person, a tree, no ground to park on, furniture or other objects, a wall or fence, indoors, the spot is in someone else's safehouse.
 [/list]
 [h3]Landing[/h3]
-{{img:04-unpacked-en.jpg}}
+{{img:06-unpacked-en.jpg}}
 [list]
 [*] [b]Unpacking[/b]: the capsule whooshes to the spot, lands with a pop, smoke and a flash, and the vehicle appears as it was with its cargo back on board; the screen says "Unpacked: <vehicle>".
 [*] [b]Empty capsule back[/b]: with the sandbox option "Return an empty capsule" on (the default), an empty capsule of the same type goes back into your inventory, ready for the next vehicle.
@@ -222,6 +224,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [*] [b]No 3D preview[/b]: a Pal Sphere holding an animal has no "Preview vehicle" in its menu.
 [/list]
 === 🧰 Throwing to capture
+{{img:08-capture-throw-en.jpg}}
 [h3]How to throw[/h3]
 [list]
 [*] [b]The menu[/b]: with an empty capsule or Pal Sphere on you (bags count), right-click it in the inventory and choose "Throw to Capture" to get the capture cursor. Left-click to throw, right-click to cancel.
@@ -249,7 +252,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [*] [b]Landing spot in someone else's safehouse[/b]: a missed empty capsule or Pal Sphere falls at your feet instead.
 [/list]
 === 🧰 Safehouse protection
-{{img:10-safehouse-en.jpg}}
+{{img:13-safehouse-en.jpg}}
 [list]
 [*] [b]The rule[/b]: on a multiplayer server, nobody can pack, capture or release a vehicle or an animal in someone else's safehouse. Who is exempt follows vanilla: the safehouse owner and members, staff with the vanilla safehouse permission, and safehouse war time.
 [*] [b]Single player[/b]: there are no safehouses, so nothing changes.
@@ -303,7 +306,7 @@ With the sandbox option "Allow taking cargo out of capsules" on:
 [/list]
 === 🧰 Tooltip and 3D preview
 [h3]Tooltip[/h3]
-{{img:05-capsule-tooltip-en.jpg}}
+{{img:10-capsule-tooltip-en.jpg}}
 [list]
 [*] [b]Where[/b]: hover a capsule and an extra box appears under the vanilla tooltip.
 [*] [b]It lists[/b]: the type (look and sounds), the vehicle name, type, paint, condition (engine and body), fuel, battery, missing parts, mods, cargo (count and the first items) and who packed it.
@@ -313,7 +316,7 @@ With the sandbox option "Allow taking cargo out of capsules" on:
 [*] [b]Does it come back[/b]: every capsule and Pal Sphere, empty or loaded, has a line saying whether the empty one comes back to your inventory after unpacking or release. When it does the line is grey, for example "After unpacking, the empty capsule comes back to your inventory."; when the server turns "Return an empty capsule" (capsules) or "Return an empty Pal Sphere" (Pal Spheres) off it is in the warning colour, for example "Single use: unpacking the vehicle uses up this capsule (server setting)."
 [/list]
 [h3]Pal Spheres holding an animal[/h3]
-{{img:08-sphere-tooltip-en.jpg}}
+{{img:11-sphere-tooltip-en.jpg}}
 [list]
 [*] [b]It lists[/b]: the tier, the animal's kind and breed, name, sex, age, weight, health, milk (when it can be milked), wool (when it has some), whether it is wild, and who caught it.
 [*] [b]Pregnancy and fertilization[/b]: as in vanilla, only shown to players with Husbandry level 3 or higher.
@@ -321,14 +324,14 @@ With the sandbox option "Allow taking cargo out of capsules" on:
 [*] [b]Time stands still[/b]: empty and loaded Pal Spheres both end with a grey line, "Time stands still inside a Pal Sphere: the animal won't grow or get hungry or thirsty, and a pregnancy pauses."
 [/list]
 [h3]3D preview[/h3]
-{{img:06-preview-en.jpg}}
+{{img:12-preview-en.jpg}}
 [list]
 [*] [b]Open it[/b]: right-click a capsule and choose "Preview vehicle".
 [*] [b]Controls[/b]: left-drag to rotate, right-drag to pan, scroll to zoom, double-click to reset, or use the front, side and top view buttons.
 [*] [b]It shows the model, not this vehicle[/b]: the preview draws the vehicle type's default look with every optional part, not this vehicle's actual paint and parts; the list next to it shows this vehicle's real state.
 [/list]
 === 🧰 Trading vehicles and animals in the Economy Center
-{{img:13-economy-en.jpg}}
+{{img:16-economy-en.jpg}}
 [list]
 [*] [b]Needs a recent Minidoracat Economy[/b]: a loaded capsule can be listed on the market or put up for auction, cargo included. Older Economy versions still refuse loaded capsules.
 [*] [b]What buyers see[/b]: market and auction listings show the vehicle and its condition (engine and body, fuel, battery, number of missing parts, number of cargo items).
@@ -405,7 +408,7 @@ The options are on the sandbox pages "Minidoracat Pack & Throw", "Minidoracat Pa
 [*] [b]When it applies[/b]: only to containers opened for the first time afterwards; containers already searched don't refill. Changes made while the server is running apply to containers opened from then on.
 [/list]
 === ⚙️ Admin panel
-{{img:11-admin-records-en.jpg}}
+{{img:14-admin-records-en.jpg}}
 [list]
 [*] [b]Opening it[/b]: admins see a Pack & Throw button on the family toolbar that opens "Pack & Throw Admin".
 [*] [b]Hiding the button[/b]: it can be hidden in the options.
@@ -437,7 +440,7 @@ The options are on the sandbox pages "Minidoracat Pack & Throw", "Minidoracat Pa
 [*] [b]When a player dies[/b]: the capsule stays on the body or on the ground; if it can be found, there's nothing to restore.
 [/list]
 [h3]How to restore[/h3]
-{{img:12-admin-restore-en.jpg}}
+{{img:15-admin-restore-en.jpg}}
 [olist]
 [*] Select the capsule in the records and use "Go to the recorded spot" first.
 [*] Press "Restore vehicle". The panel steps aside and a white frame shows on the ground: that's the recorded spot (where the vehicle was last packed or unpacked).
