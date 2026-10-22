@@ -6,6 +6,7 @@
 --   * capsule containers are not offered to crafting and building (ISInventoryPaneContextMenu.getContainers).
 -- Sandbox AllowCargoTakeOut opens the first two for a capsule whose record is a confirmed PACKED one (Rules.cargoOpen);
 -- crafting and building still use nothing inside a capsule, and nothing can be put in (MaxItemSize).
+-- The inventory and loot windows show no container button for a loaded capsule or sphere whose container is empty.
 require "MinidoracatPackThrow/Core"
 require "MinidoracatPackThrow/Rules"
 require "MinidoracatPackThrow/Info"
@@ -71,6 +72,39 @@ Events.OnFillInventoryObjectContextMenu.Add(function(playerNum, context, items)
     context:clear()
     local option = context:addOption(getText("IGUI_MinidoracatPackThrow_CargoLocked"))
     option.notAvailable = true
+end)
+
+-- The windows' container buttons (ISInventoryPage.refreshBackpacks): vanilla gives one to every container item held in
+-- the hands, lying on the floor around the player, or in a vehicle's seats and trunk. A loaded capsule or sphere whose
+-- own container is empty gets none: a sphere never holds anything there, and a capsule packed with sandbox CargoWeight
+-- off keeps its cargo in its cargo store (M.cargoStore); the tooltip and the preview list the cargo either way. A
+-- capsule with cargo in its container keeps its button. Dropped at "buttonsAdded", before the window picks the shown
+-- container and sizes the button column from this list. The buttons after a dropped one move into the slots before
+-- them: each takes the place the button with its new index had, so any layout keeps working (vanilla's column,
+-- CleanUI's padded one- or two-column grid, whose drag-sort later reuses whatever slots the buttons hold).
+Events.OnRefreshInventoryWindowContainers.Add(function(page, state)
+    if state ~= "buttonsAdded" then return end
+    local list, kept, xs, ys = page.backpacks, {}, {}, {}
+    for i, button in ipairs(list) do
+        xs[i], ys[i] = button:getX(), button:getY()
+        local inv = button.inventory
+        local holder = inv and inv:getContainingItem()
+        if holder and M.isLoaded(holder) and inv:isEmpty() then
+            page.containerButtonPanel:removeChild(button)
+            table.insert(page.buttonPool, button)
+        else
+            kept[#kept + 1] = button
+        end
+    end
+    if #kept == #list then return end
+    for i = 1, #list do
+        local button = kept[i]
+        list[i] = button
+        if button then
+            button:setX(xs[i])
+            button:setY(ys[i])
+        end
+    end
 end)
 
 return CargoLock

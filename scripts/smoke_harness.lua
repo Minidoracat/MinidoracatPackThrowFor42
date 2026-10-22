@@ -54,6 +54,7 @@ local function newContainer(holder)
     local c = { list = {}, holder = holder }
     function c:getItems() return javaList(self.list) end
     function c:getContainingItem() return self.holder end
+    function c:isEmpty() return #self.list == 0 end
     function c:AddItem(it) self.list[#self.list + 1] = it; it.container = self; return it end
     function c:Remove(it)
         for i, x in ipairs(self.list) do
@@ -3332,6 +3333,50 @@ local function infoCases() -- 獨立函式：主程式的 local 已接近 200 �
         saved.getText, saved.gsp, saved.send
 end
 infoCases()
+
+print("CargoLock：容器欄不列容器是空的裝車膠囊與帕魯球（貨物在貨物倉的也算空）；容器裡有貨物的膠囊、別的空袋子照列，照版面往前補位")
+local function shellCases() -- 獨立函式：主程式的 local 已接近 200 個上限
+    local keys = { "MinidoracatPackThrow/Info", "TimedActions/ISInventoryTransferAction", "ISUI/ISInventoryPaneContextMenu" }
+    local saved = { Events = Events, xfer = ISInventoryTransferAction, menu = ISInventoryPaneContextMenu, loaded = {} }
+    for _, k in ipairs(keys) do saved.loaded[k] = loaded[k]; loaded[k] = true end
+    local refresh = {}
+    Events = setmetatable({ OnRefreshInventoryWindowContainers = { Add = function(fn) refresh[#refresh + 1] = fn end } },
+        { __index = function() return { Add = function() end } end })
+    ISInventoryTransferAction = { isValid = function() return true end }
+    ISInventoryPaneContextMenu = { getContainers = function(list) return list end }
+    loadfile(MEDIA .. "/client/MinidoracatPackThrow/CargoLock.lua")()
+    -- the loot window's buttons in vanilla order: a capsule with its cargo in its container, one with its cargo in its
+    -- store (CargoWeight off), a sphere, an empty school bag, a capsule whose car had no cargo, the floor
+    local heavy, light, sphere = instanceItem(M.TYPES[1].loaded), instanceItem(M.TYPES[2].loaded), instanceItem(M.FIRST_SPHERE.loaded)
+    local bag, bare, floor = newItem("Base.Bag_Schoolbag", true), instanceItem(M.TYPES[3].loaded), newContainer(nil)
+    heavy.inv:AddItem(newItem("Base.WaterBottle"))
+    light.store.list[1] = newItem("Base.Lighter")
+    -- CleanUI's layout: a padded two-column grid (CleanUI ISInventoryPage:cleanUIGetContainerButtonPosition); vanilla's
+    -- single column is the same rule with one column. Buttons move into the slots before them, not by buttonSize.
+    local SIZE, PAD = 32, 3
+    local function slot(i) return PAD + ((i - 1) % 2) * (SIZE + PAD), PAD + math.floor((i - 1) / 2) * (SIZE + PAD) end
+    local page = { backpacks = {}, buttonPool = {}, buttonSize = SIZE, removed = {} }
+    page.containerButtonPanel = { removeChild = function(_, b) page.removed[#page.removed + 1] = b.inventory end }
+    for i, inv in ipairs({ heavy.inv, light.inv, sphere.inv, bag.inv, bare.inv, floor }) do
+        local x, y = slot(i)
+        page.backpacks[i] = { inventory = inv, x = x, y = y, getX = function(b) return b.x end,
+            setX = function(b, v) b.x = v end, getY = function(b) return b.y end, setY = function(b, v) b.y = v end }
+    end
+    for _, fn in ipairs(refresh) do fn(page, "buttonsAdded") end
+    local b, placed = page.backpacks, true
+    for i, button in ipairs(page.backpacks) do
+        local x, y = slot(i)
+        placed = placed and button.x == x and button.y == y
+    end
+    check(#b == 3 and b[1].inventory == heavy.inv and b[2].inventory == bag.inv and b[3].inventory == floor and placed,
+        "照列：容器裡有貨物的膠囊、別的空袋子、地板，依序補進前面的格子（兩欄網格），中間沒有空位（" .. #b .. " 個）")
+    check(#page.removed == 3 and page.removed[1] == light.inv and page.removed[2] == sphere.inv
+        and page.removed[3] == bare.inv and #page.buttonPool == 3,
+        "不列：貨物在貨物倉的膠囊、帕魯球、車上沒有貨物的膠囊；按鈕從容器欄拿掉、放回按鈕池")
+    Events, ISInventoryTransferAction, ISInventoryPaneContextMenu = saved.Events, saved.xfer, saved.menu
+    for _, k in ipairs(keys) do loaded[k] = saved.loaded[k] end
+end
+shellCases()
 
 print("Effects：每個落地結果用膠囊編號收掉那次飛行（收車煙霧在別格、丟出展開、落地被拒、沒中），預覽照同格、沒結果的照舊最多停 1.5 秒")
 local function effectsCases() -- 獨立函式：主程式的 local 已接近 200 個上限
