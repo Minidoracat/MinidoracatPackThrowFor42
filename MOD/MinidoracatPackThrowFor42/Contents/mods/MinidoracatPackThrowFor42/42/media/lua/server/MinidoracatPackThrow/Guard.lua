@@ -1,14 +1,16 @@
 -- Pack & Throw: server guards over loaded capsules, driven by one OnTickEvenPaused handler.
 --   * Store.settleDue every tick. OnTick stops on an empty dedicated server with PauseEmpty; OnTickEvenPaused fires
 --     at the top of IngameState.updateInternal, before the pause check (IngameState.java:1347 vs 1517-1520).
---   * Every PASS_MS, for loaded capsules in online players' inventories (any depth) and on the ground around them:
---     a stale record (UNPACKED and settled, or VOID) means the cargo is a second copy -> replace with an empty capsule
---     (Guard.stale: an unpack newer than the world save is cleared only when its car is loaded, else an admin
---     checks); otherwise sealed cargo that left the capsule is put back when the player carries it (cargo lock).
---     Vanilla item transfers are pure Java (ItemTransactionPacket -> TransactionManager.isConsistent/
+--   * Every PASS_MS, for loaded capsules in online players' inventories (any depth, one engine search) and on the
+--     ground around them: a stale record (UNPACKED and settled, or VOID) means the cargo is a second copy -> replace
+--     with an empty capsule (Guard.stale: an unpack newer than the world save is cleared only when its car is loaded,
+--     else an admin checks); otherwise sealed cargo that left the capsule is put back when the player carries it
+--     (cargo lock). Vanilla item transfers are pure Java (ItemTransactionPacket -> TransactionManager.isConsistent/
 --     Transaction.update, no Lua hook on the source), so the server can only undo them, not refuse them.
 --     Each capsule's sighting is noted (Store.seen). Cargo is inside when it is in the capsule's container or in its
---     cargo store (M.cargoItems; a light record keeps it in the store, where no vanilla transfer reaches).
+--     cargo store (M.cargoItems). A light record keeps it all in the store, where no vanilla transfer reaches, so its
+--     cargo is never walked. Walking costs about 1 ms per 1000 items (vcap-lag-*-1022b): the other capsules are
+--     walked when their fingerprint changed, and otherwise every FULL_MS (Guard.check).
 --   * Sandbox AllowCargoTakeOut and a confirmed PACKED record (Rules.cargoOpen): cargo that left stays out; the
 --     record drops it (sealed, manifest) so the tooltip, the preview and the admin panel list what is still inside.
 --   * Record retention (Index.prune) right after start, then every PRUNE_MS.
@@ -22,6 +24,7 @@ local Guard = {}
 M.Guard = Guard
 
 Guard.PASS_MS = 1000
+Guard.FULL_MS = 30000 -- a capsule whose fingerprint did not change is still walked this often (equal swaps)
 Guard.GROUND_RANGE = 2 -- squares around each player searched for capsules on the ground
 Guard.PRUNE_MS = 3600000 -- record retention runs right after start, then hourly
 Guard.PRUNE_BUCKETS = 8  -- buckets rewritten per pass while a retention backlog lasts
@@ -164,9 +167,27 @@ local function sync(player, capsule, capsuleId, sealed)
     Store.event(capsuleId, snap, "CARGO_TAKEN", player, { items = table.concat(parts, ",") })
 end
 
+-- What moving cargo in or out changes, read without touching each item: how many items the capsule's container holds
+-- at any depth (one size() per container; the engine's recursive search finds the bags) and what they weigh (summed
+-- by the engine, ItemContainer.getContentsWeight). A swap of equal count and weight shows only at the FULL_MS walk.
+local function fingerprint(capsule)
+    local box = capsule:getInventory()
+    local n, bags = box:getItems():size(), box:getAllCategoryRecurse("Container", ArrayList.new())
+    for i = 0, bags:size() - 1 do n = n + bags:get(i):getInventory():getItems():size() end
+    return n .. "/" .. tostring(box:getContentsWeight())
+end
+
+-- capsuleId -> { sign, sealed = #sealed, walked = ms }: what the capsule's last walk saw. Kept here, not on the cached
+-- status, which every read of the record replaces. ponytail: one small entry per capsule walked this run, never
+-- pruned; prune them with the record if a server ever walks millions.
+local marks = {}
+
 -- One loaded capsule seen by a pass: clear it when stale, otherwise keep its cargo inside, or follow what was taken
 -- when the server lets cargo out. A capsule out of an Economy trade ends that trade (Trade.landed; Trade.lua is
--- loaded whenever a record is in a trade, it put it there).
+-- loaded whenever a record is in a trade, it put it there). A light record's cargo store is never walked (no vanilla
+-- transfer reaches it). Other cargo is walked when its fingerprint or its sealed count differs from the last walk's
+-- (sync drops what was taken from sealed), or FULL_MS after that walk. A capsule's first walk starts its clock at an
+-- offset of its own (its id), so capsules seen together walk apart later.
 function Guard.check(player, capsule)
     local capsuleId = capsule:getID()
     local st = Store.status(capsuleId)
@@ -177,11 +198,17 @@ function Guard.check(player, capsule)
         return
     end
     if st.trade and M.Trade then M.Trade.landed(capsuleId, player) end
+    if st.light or not st.sealed or #st.sealed == 0 then return end
+    local sign, now, mark = fingerprint(capsule), getTimestampMs(), marks[capsuleId]
+    if mark and mark.sign == sign and mark.sealed == #st.sealed and now - mark.walked < Guard.FULL_MS then return end
     if M.Rules.cargoOpen(st) then
         sync(player, capsule, capsuleId, st.sealed)
     else
         lock(player, capsule, capsuleId, st.sealed)
     end
+    local cur = Store.status(capsuleId) -- lock may have put cargo back, sync rewritten the record
+    marks[capsuleId] = { sign = fingerprint(capsule), sealed = cur and cur.sealed and #cur.sealed or 0,
+        walked = mark and now or now - math.abs(capsuleId) % Guard.FULL_MS }
 end
 
 local function groundCapsules(player, out)
@@ -205,11 +232,11 @@ end
 function Guard.pass(player)
     local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
     local held = { where = "player", by = player:getUsername(), x = px, y = py, z = pz }
-    local inv = player:getInventory()
-    for _, t in ipairs(M.TYPES) do
-        local found = inv:getAllTypeRecurse(t.loaded)
-        for i = 0, found:size() - 1 do
-            local capsule = found:get(i)
+    -- one recursive engine search for the player's containers: loaded capsules and spheres are containers
+    local found = player:getInventory():getAllCategoryRecurse("Container", ArrayList.new())
+    for i = 0, found:size() - 1 do
+        local capsule = found:get(i)
+        if M.isLoaded(capsule) then
             Guard.check(player, capsule)
             Store.seen(capsule:getID(), held)
         end

@@ -185,7 +185,7 @@ Store.listeners = {}
 
 local function remember(capsuleId, snap, written, quiet)
     status[capsuleId] = { state = snap.state, settled = snap.settled == true, sealed = snap.sealed, seen = snap.seen,
-        trade = type(snap.escrow) == "table" and snap.escrow.active == true }
+        light = snap.light == true, trade = type(snap.escrow) == "table" and snap.escrow.active == true }
     for _, fn in ipairs(Store.listeners) do
         local ok, err = pcall(fn, capsuleId, snap, written, quiet)
         if not ok then M.log("store listener failed: " .. tostring(err)) end
@@ -235,8 +235,8 @@ function Store.read(capsuleId)
     return snap
 end
 
--- Cached { state, settled, sealed, seen } for the guard's scans: the record is read once, then every write refreshes
--- it. false when there is no readable record.
+-- Cached { state, settled, sealed, seen, light, trade } for the guard's scans: the record is read once, then every
+-- read and write refreshes it. false when there is no readable record.
 function Store.status(capsuleId)
     local st = status[capsuleId]
     if st == nil then

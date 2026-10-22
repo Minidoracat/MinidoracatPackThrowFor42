@@ -51,6 +51,9 @@ local function javaList(l)
     return { size = function() return #l end, get = function(_, i) return l[i + 1] end }
 end
 local function newContainer(holder)
+    -- 假重量（引擎的 getUnequippedWeight；背包另加內容物）：Guard 的指紋拿件數與重量判斷貨物動過沒有。
+    -- 放在函式裡：主程式的 local 已到 200 個上限
+    local WEIGHT = { ["Base.WaterBottle"] = 1, ["Base.Bag_Schoolbag"] = 0.5, ["Base.Key1"] = 0 }
     local c = { list = {}, holder = holder }
     function c:getItems() return javaList(self.list) end
     function c:getContainingItem() return self.holder end
@@ -81,6 +84,29 @@ local function newContainer(holder)
         end
         walk(self)
         return javaList(out)
+    end
+    -- 裝了東西的膠囊、帕魯球與袋子都是容器物品（getCategory "Container"）；引擎的遞迴搜尋會進每一個容器
+    function c:getItemsFromCategory(cat)
+        local out = {}
+        for _, x in ipairs(self.list) do if x.inv and cat == "Container" then out[#out + 1] = x end end
+        return javaList(out)
+    end
+    function c:getAllCategoryRecurse(cat, out)
+        local function walk(cc)
+            for _, x in ipairs(cc.list) do
+                if x.inv then
+                    if cat == "Container" then out:add(x) end
+                    walk(x.inv)
+                end
+            end
+        end
+        walk(self)
+        return out
+    end
+    function c:getContentsWeight()
+        local w = 0
+        for _, x in ipairs(self.list) do w = w + (WEIGHT[x.type] or 0.1) + (x.inv and x.inv:getContentsWeight() or 0) end
+        return w
     end
     return c
 end
@@ -877,6 +903,51 @@ do -- 拿出模式（AllowCargoTakeOut）：主程式的 local 已接近 200 個
         check(water2.container == settling.inv and h2[#h2].ev == "CARGO_LOCK" and h2[#h2].why == "returned",
             "剛收好、還沒落盤的膠囊照樣放回（CARGO_LOCK returned）")
         check(only and off, "Rules.cargoOpen：只有已落盤的 PACKED，而且沙盒開著")
+    end)()
+end
+
+do -- 指紋快取：主程式的 local 已接近 200 個上限，放進函式
+    (function()
+        print("Guard：貨物沒動時只比件數與重量；動了照樣放回（包括袋子裡的），件數重量都一樣的調包等 FULL_MS 那次全查；身上任何深度的膠囊都找得到")
+        quiet = true
+        local cap, water, bag, pencil = packedCapsule("PACKED", true)
+        local key = newItem("Base.Key1") -- 零重量（專用伺服器上本 MOD 的物品就讀成 0）：只有件數看得出它被拿走
+        bag.inv:AddItem(key)
+        local s = Store.read(cap.id)
+        s.sealed[#s.sealed + 1] = key.id
+        Store.write(cap.id, s)
+        Guard.pass(owner) -- 第一次逐件核對，記下指紋
+        bag.inv:Remove(key) -- 從膠囊裡的書包拿出鑰匙
+        owner.inv:AddItem(key)
+        Guard.pass(owner)
+        local nestedBack = key.container == cap.inv
+        cap.inv:Remove(water) -- 拿出水瓶、塞一支鉛筆進去：件數一樣，重量不一樣
+        owner.inv:AddItem(water)
+        cap.inv:AddItem(newItem("Base.Pencil"))
+        Guard.pass(owner)
+        local swapBack = water.container == cap.inv
+        bag.inv:Remove(pencil) -- 從書包拿出鉛筆、塞一個一樣重的橡皮擦：件數、重量都一樣
+        owner.inv:AddItem(pencil)
+        bag.inv:AddItem(newItem("Base.Eraser"))
+        nowMs = nowMs + Guard.FULL_MS
+        Guard.pass(owner)
+        local equalBack = pencil.container == cap.inv
+        owner.inv:Remove(cap)
+        local pouch = newItem("Base.Bag_Schoolbag", true) -- 作廢的膠囊放在身上的書包裡
+        owner.inv:AddItem(pouch)
+        local inner = instanceItem(M.TYPES[1].loaded)
+        pouch.inv:AddItem(inner)
+        Store.write(inner.id, { state = "VOID", script = "Base.PickUpTruck", sealed = {}, history = { { ev = "PACKED", car = 9 } } })
+        Guard.pass(owner)
+        local ih = Store.read(inner.id).history
+        local innerCleared = pouch.inv:getItemWithIDRecursiv(inner.id) == nil and #pouch.inv.list == 1
+            and pouch.inv.list[1].type == M.TYPES[1].empty and ih[#ih].ev == "CLEARED"
+        owner.inv:Remove(pouch)
+        quiet = false
+        check(nestedBack, "記下指紋後才從膠囊裡的書包拿出零重量的鑰匙（只有件數變）：下一輪照樣放回膠囊")
+        check(swapBack, "拿出水瓶、塞一支鉛筆（件數一樣、重量不一樣）：下一輪照樣放回")
+        check(equalBack, "件數重量都一樣的調包：FULL_MS 那次全查放回")
+        check(innerCleared, "身上書包裡的作廢膠囊也找得到：換成空膠囊、記 CLEARED")
     end)()
 end
 

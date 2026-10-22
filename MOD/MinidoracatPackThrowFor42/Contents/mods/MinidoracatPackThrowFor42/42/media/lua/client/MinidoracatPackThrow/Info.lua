@@ -421,17 +421,23 @@ end
 -- container): their summaries are asked for now and they get their names. The server counts a capsule asked about
 -- from nearby as a sighting (admin panel: last seen), and with cargo take-out on the first take is not refused while
 -- the answer is on its way. The pane hook below covers what reaches a window without this full refresh.
+-- Loaded capsules and spheres are containers, so the engine picks the containers out (getItemsFromCategory): Lua
+-- does not walk the cargo of every capsule shown, which cost ~33 ms a refresh for 10 x 5000 items (vcap-lag-*-1022d).
+local function renameIn(inv)
+    local items = inv and inv:getItemsFromCategory("Container")
+    for i = 0, (items and items:size() or 0) - 1 do
+        local it = items:get(i)
+        if M.isLoaded(it) then rename(it) end
+    end
+end
+
 Events.OnRefreshInventoryWindowContainers.Add(function(page, state)
     if state ~= "end" then return end
     for _, button in ipairs(page.backpacks or {}) do
         local inv = button.inventory
         local holder = inv and inv:getContainingItem()
         if holder and M.isLoaded(holder) then rename(holder) end
-        local items = inv and inv:getItems()
-        for i = 0, (items and items:size() or 0) - 1 do
-            local it = items:get(i)
-            if M.isLoaded(it) then rename(it) end
-        end
+        renameIn(inv)
     end
 end)
 
@@ -440,11 +446,7 @@ end)
 -- lists it (ISInventoryPane:renderdetails refreshes a dirty container while the window is open).
 local refreshContainer = ISInventoryPane.refreshContainer
 function ISInventoryPane:refreshContainer()
-    local items = self.inventory and self.inventory:getItems()
-    for i = 0, (items and items:size() or 0) - 1 do
-        local it = items:get(i)
-        if M.isLoaded(it) then rename(it) end
-    end
+    renameIn(self.inventory)
     return refreshContainer(self)
 end
 
