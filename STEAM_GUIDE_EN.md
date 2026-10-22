@@ -354,6 +354,7 @@ With the sandbox option "Allow taking cargo out of capsules" on:
 === 🧰 Performance
 [list]
 [*] [b]Packed vehicles are not in the world[/b]: the game spends no time on them each frame. The more vehicles you pack, and the heavier they are (KI5's vehicles, for example), the smoother things get nearby.
+[*] [b]Why KI5's vehicles are heavy[/b]: their doors, windows and armor are rigged models whose bones are recalculated every frame, even while parked, so one costs several times a vanilla vehicle.
 [*] [b]What packing can't fix[/b]: vehicles being driven and vehicles that aren't packed cost the same as before, and the moment a vehicle is unpacked may hitch briefly.
 [/list]
 === ⚙️ Sandbox options and defaults
