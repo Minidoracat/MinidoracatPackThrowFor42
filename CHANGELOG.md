@@ -12,6 +12,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 `{PZ版本}-{主版本}.{次版本}.{修訂}` 格式。
 
+## [Unreleased]
+
+### 修正
+
+- **在主選單的選項按了套用之後，本 MOD 的設定不再全部回到預設**：沒有其他 MOD 在主選單建選項時，在主選單的選項按「套用」會把所有 MOD 的設定清空，進遊戲後本 MOD 的「在家族工具列顯示管理面板」回到預設（開著）。現在進遊戲時會自動補回上次的設定。需要 Minidoracat UI Library 更新到含這項功能的版本後才生效。
+
+> 技術要點：用 UI 框架 API rev 23 的 `UI.ModOptionsBackup.protect`（旗標 `modOptionsBackup`），在讀取選項前補回；備份檔在 `Zomboid/Lua/MinidoracatUI/ModOptions_MinidoracatPackThrow.ini`。
+
 ## [42.21.0-0.4.1] - 2026-10-22
 
 ### 變更

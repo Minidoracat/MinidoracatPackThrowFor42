@@ -83,6 +83,16 @@ local function registerOptions()
         showDock = self:getOption("ShowDock"):getValue() ~= false
         if docked then Kit.UI.Dock.refresh() end
     end
+    -- 原版主選單沒有 MOD 選項時按套用會把 ModOptions.ini 清空；框架 rev 23 從備份補回本 MOD 的值。
+    -- 要在下面的 load 之前，showDock 才會讀到補回後的值。
+    local UI = Kit.UI
+    if UI and UI.API_MAJOR == 1 and type(UI.API_REVISION) == "number" and UI.API_REVISION >= 23
+        and UI.CAPABILITIES and UI.CAPABILITIES.modOptionsBackup and UI.ModOptionsBackup then
+        local restored = UI.ModOptionsBackup.protect(options)
+        if type(restored) == "number" and restored > 0 then
+            M.log("restored " .. restored .. " settings from the backup (ModOptions.ini was wiped)")
+        end
+    end
     PZAPI.ModOptions:load()
     showDock = options:getOption("ShowDock"):getValue() ~= false
 end
