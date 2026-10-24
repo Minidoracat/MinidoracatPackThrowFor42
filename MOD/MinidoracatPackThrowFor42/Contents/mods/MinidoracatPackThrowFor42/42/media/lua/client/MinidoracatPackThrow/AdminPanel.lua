@@ -4,11 +4,12 @@
 --     sighting, go to the recorded spot or to the last sighting, restore, and the verdicts "car is there, close" /
 --     "car is gone" for records a crash left uncertain.
 --     Every action is a server command (server/AdminCommands.lua) checked there; this file only shows replies.
---   Settings, Types and Loot: every sandbox option of the mod (Settings: return an empty one, crafting, who can pack,
---     the zombie radius of the capsule sound, taking cargo out, whether cargo weighs, animals, the wild catch chance
---     and its three bonuses, days to keep closed records; Types: per capsule type and Pal Sphere tier the use and loot
---     switches, "List..." into Minidoracat Economy's shop and a preview played here only; Loot: the master switch and
---     the seven places (four for capsules, three for spheres) with their weights). They are the sandbox options of the
+--   Settings, Types, Craft and Loot: every sandbox option of the mod (Settings: return an empty one, who can pack, the
+--     zombie radius of the capsule sound, taking cargo out, whether cargo weighs, animals, the wild catch chance and its
+--     three bonuses, days to keep closed records; Types: per capsule type and Pal Sphere tier the use and loot switches,
+--     "List..." into Minidoracat Economy's shop and a preview played here only; Craft: per type the crafting level, with
+--     the vanilla recipe tooltip of a level on hover; Loot: the master switch and the seven places (four for capsules,
+--     three for spheres) with their weights). They are the sandbox options of the
 --     vanilla sandbox pages and are sent the same way (copy, set, sendToServer; ISServerSandboxOptionsUI.lua:762-771),
 --     so the server checks Capability.SandboxOptions; server/Loot.lua rebuilds the loot tables within a second.
 --   The window is opaque (text over other windows stayed under 4.5:1; design vcap-types-1012 review).
@@ -18,6 +19,7 @@ require "MinidoracatPackThrow/Info"
 require "MinidoracatPackThrow/UIKit"
 require "MinidoracatPackThrow/ThrowCursor"
 require "MinidoracatPackThrow/Effects"
+require "MinidoracatPackThrow/Recipes"
 require "PZAPI/ModOptions"
 local M = MinidoracatPackThrow
 local Info, Kit = M.Info, M.UIKit
@@ -268,21 +270,24 @@ function Win.new()
     local w, h = math.min(980, sw - 40), math.min(720, sh - 40)
     self.w, self.h = w, h
     self.win = UI.Window.new({ x = math.floor((sw - w) / 2), y = math.floor((sh - h) / 2), width = w, height = h,
-        title = U("PanelTitle"), theme = theme, icon = "carPickup", opaque = true, onClose = function() end })
+        title = U("PanelTitle"), theme = theme, icon = "carPickup", opaque = true,
+        onClose = function() self:hideRecipeTips() end })
     local top = self.win:contentTop() + GAP
     self.tabs = UI.Tabs.new({ x = PAD, y = top, items = { { id = "records", label = U("TabRecords") },
         { id = "settings", label = U("TabSettings") }, { id = "types", label = U("TabTypes") },
-        { id = "loot", label = U("TabLoot") } }, selected = "records",
+        { id = "craft", label = U("TabCraft") }, { id = "loot", label = U("TabLoot") } }, selected = "records",
         theme = theme, target = self, onSelect = function(target, id) target:showTab(id) end })
     self.win:addChild(self.tabs)
     local py = top + self.tabs.height + GAP
     self.records = newPane(self.win, 0, py, w, h - py)
     self.settings = newPane(self.win, 0, py, w, h - py)
     self.types = newPane(self.win, 0, py, w, h - py)
+    self.craft = newPane(self.win, 0, py, w, h - py)
     self.loot = newPane(self.win, 0, py, w, h - py)
     self:buildRecords(self.records)
     self:buildSettings(self.settings)
     self:buildTypes(self.types)
+    self:buildCraft(self.craft)
     self:buildLoot(self.loot)
     self:showTab("records")
     return self
@@ -293,9 +298,12 @@ function Win:showTab(id)
     self.records:setVisible(id == "records")
     self.settings:setVisible(id == "settings")
     self.types:setVisible(id == "types")
+    self.craft:setVisible(id == "craft")
     self.loot:setVisible(id == "loot")
+    if id ~= "craft" then self:hideRecipeTips() end
     if id == "settings" then self:loadSettings() end
     if id == "types" then self:loadTypes() end
+    if id == "craft" then self:loadCraft() end
     if id == "loot" then self:loadLoot() end
 end
 
@@ -1026,6 +1034,209 @@ function Win:listType(t)
     end
 end
 
+-- ------------------------------------------------ craft tab
+
+-- One row per type (Core M.TYPES) under two headings, capsules and Pal Spheres: its icon and name, a second line (what
+-- the picked level takes, or why players never see the recipe) and four chips for sandbox Craft<id>, named after the
+-- option's values (off, easy, standard, hard). The chips stay usable while the type is off in the Types tab, so a level
+-- can be set ahead. Hovering a level chip shows the vanilla tooltip of that recipe. The chips of one row share a
+-- _focusGroup (keyboard and gamepad focus, FilterBar.lua:613-614). Design packthrow-craft-1025.
+function Win:buildCraft(p)
+    local c = newConfig(self, p, function(t) t:loadCraft() end, function(t) t:applyCraft() end)
+    self.craftCfg = c
+    self.craftRows, self.craftTips, self.craftHeads, self.craftNote = {}, {}, {}, {}
+    local head = U("TabCraft")
+    for i, t in ipairs(M.TYPES) do
+        local name = Info.itemName(t.empty)
+        local row = { t = t, name = name, level = 1, line = "", lines = {}, lineToken = "textMuted", chips = {},
+            icon = getTexture("media/textures/Item_" .. t.icon .. ".png") }
+        for v = 1, 4 do
+            local b = UI.Button.new({ height = CH, style = "chip", theme = theme, target = self,
+                title = getText("Sandbox_MinidoracatPackThrow_CraftLevel_option" .. v),
+                onClick = function(o) o:pickCraft(i, v) end })
+            b._focusGroup, b._focusLabel = "Craft" .. t.id, name .. sep() .. head
+            if v > 1 then self:hookRecipeTip(b, M.Recipes.name(t, v)) end
+            c.scroll:addChild(b)
+            row.chips[v] = b
+        end
+        self.craftRows[i] = row
+    end
+    c.body.draw = function(el)
+        local b, w, x = COL.border, c.w, self.craftNameX
+        for _, hd in ipairs(self.craftHeads) do
+            for k, line in ipairs(hd.lines) do text(el, line, PAD, hd.y + (k - 1) * FH, "textMuted") end
+            el:drawRect(PAD, hd.y + #hd.lines * FH + 3, w - PAD * 2, 1, b.a, b.r, b.g, b.b)
+        end
+        for _, row in ipairs(self.craftRows) do
+            if row.icon then
+                el:drawTextureScaled(row.icon, PAD, row.y + math.floor((row.h - 32) / 2), 32, 32, row.on and 1 or 0.5,
+                    1, 1, 1)
+            end
+            local ty = row.y + math.floor((row.h - FH * (1 + #row.lines)) / 2)
+            text(el, row.nameFit, x, ty, row.on and "text" or "textMuted")
+            for k, line in ipairs(row.lines) do text(el, line, x, ty + k * FH, row.lineToken) end
+        end
+        for k, line in ipairs(self.craftNote) do text(el, line, PAD, self.craftNoteY + (k - 1) * FH, "textMuted") end
+    end
+end
+
+-- Rows and chips from the current second lines: the chips sit right, the same x on every row (a level's chip has the
+-- same title, so the same width, in every row); a second line that wraps makes its row taller. Strings are computed
+-- here: draw does not allocate.
+function Win:layoutCraft()
+    local c = self.craftCfg
+    local w, total = c.w, 0
+    for v, b in ipairs(self.craftRows[1].chips) do total = total + b.width + (v > 1 and 6 or 0) end
+    local x0 = w - PAD - total
+    self.craftNameX = PAD + 32 + GAP
+    local nameW = math.max(40, x0 - GAP * 2 - self.craftNameX)
+    local y = GAP
+    self.craftHeads = {}
+    for i, row in ipairs(self.craftRows) do
+        if i == 1 or row.t.sphere ~= self.craftRows[i - 1].t.sphere then
+            if i > 1 then y = y + GAP end -- a group starts apart from the rows above
+            local lines = paragraphs(U(row.t.sphere and "CraftGroupSpheres" or "CraftGroupCapsules"), w - PAD * 2)
+            self.craftHeads[#self.craftHeads + 1] = { lines = lines, y = y }
+            y = y + #lines * FH + GAP
+        end
+        row.nameFit = fit(row.name, nameW)
+        row.lines = Kit.wrap(row.line, nameW)
+        row.y, row.h = y, math.max(36, CH + 8, (1 + #row.lines) * FH + 8)
+        local x, cy = x0, y + math.floor((row.h - CH) / 2)
+        for _, b in ipairs(row.chips) do
+            b:setX(x)
+            b:setY(cy)
+            x = x + b.width + 6
+        end
+        y = y + row.h
+    end
+    self.craftNote = paragraphs(U("CraftNote"), w - PAD * 2)
+    self.craftNoteY = y + GAP
+    c.body:setHeight(self.craftNoteY + #self.craftNote * FH + GAP)
+end
+
+-- "Electricity 4 · Mechanics 2 · 20 seconds": the skills and time of a recipe (CraftRecipe.java:194, 944-950), so no
+-- level needs words of its own. The time is what the vanilla recipe tooltip calls the actual time, time / 10 seconds
+-- (ISCraftRecipeInfoBox.lua:49-50): the action lasts time * 5 at 48 a second (ISHandcraftAction.lua:260,
+-- GameTime.java:998-999). Not the crafting window's mm:ss label, which reads time as seconds (ISWidgetHandCraftControl.lua:
+-- 228-235): ten times too long.
+function Panel.recipeSummary(r)
+    local parts = {}
+    for i = 0, r:getRequiredSkillCount() - 1 do
+        local s = r:getRequiredSkill(i)
+        parts[#parts + 1] = s:getPerk():getName() .. " " .. tostring(s:getLevel())
+    end
+    if #parts == 0 then parts[1] = U("CraftNoSkill") end
+    parts[#parts + 1] = tostring(round(r:getTime() / 10, 2)) .. " " .. getText("IGUI_CraftingWindow_Seconds")
+    return table.concat(parts, sep())
+end
+
+-- The second line of a row and its colour token. A type off in the Types tab (the applied value) never shows, whatever
+-- the level, so that comes first and says so in words, not only in colour.
+function Win:craftLine(row)
+    if not M.Rules.typeOn(row.t) then return U("CraftTypeOff"), "warning" end
+    if row.level <= 1 then return U("CraftOffLine"), "textMuted" end
+    local name = M.Recipes.name(row.t, row.level)
+    local r = getScriptManager():getCraftRecipe(name)
+    if not r then return name, "warning" end -- the recipe script did not load
+    return Panel.recipeSummary(r), "textMuted"
+end
+
+function Win:loadCraft()
+    self.craftBase = {}
+    for _, row in ipairs(self.craftRows) do
+        local v = math.floor((tonumber(option("Craft" .. row.t.id)) or 1) + 0.5)
+        row.level = (v >= 1 and v <= 4) and v or 1
+        self.craftBase["Craft" .. row.t.id] = row.level
+    end
+    setStatus(self.craftCfg, nil)
+    self:craftChanged()
+end
+
+function Win:craftDraft()
+    local d = {}
+    for _, row in ipairs(self.craftRows) do d["Craft" .. row.t.id] = row.level end
+    return d
+end
+
+function Win:craftChanges()
+    return diff(self:craftDraft(), self.craftBase)
+end
+
+function Win:pickCraft(i, v)
+    self.craftRows[i].level = v
+    self:craftChanged()
+end
+
+function Win:craftChanged()
+    local allowed = Panel.canEditSandbox(getSpecificPlayer(0))
+    for _, row in ipairs(self.craftRows) do
+        for v, b in ipairs(row.chips) do
+            b:setActive(v == row.level)
+            b:setEnabled(allowed)
+        end
+        row.on = row.level > 1 and M.Rules.typeOn(row.t)
+        row.line, row.lineToken = self:craftLine(row)
+    end
+    self:layoutCraft()
+    local n = #self:craftChanges()
+    self.craftCfg.apply:setEnabled(allowed and n > 0)
+    self.craftCfg.discard:setEnabled(n > 0)
+    if not allowed then setStatus(self.craftCfg, U("NoSandboxRight"), "errorText") end
+end
+
+function Win:applyCraft()
+    local changes = self:craftChanges()
+    if #changes == 0 or not Panel.canEditSandbox(getSpecificPlayer(0)) then return end
+    Panel.applySandbox(changes)
+    self.craftBase = self:craftDraft()
+    setStatus(self.craftCfg, U("SettingsApplied", tostring(#changes)), "accent")
+    self:craftChanged()
+end
+
+-- The vanilla tooltip of a recipe while the pointer is on its chip, as the Safehouse admin panel does (AP.showTip). The
+-- tooltip's title header is built without the player, and a recipe that needs light then calls tooDarkToRead on nil
+-- (ISCraftRecipeTooltip.lua:33, ISWidgetTitleHeader.lua:76-84, 270-273), so the player sits on the class while it is
+-- built and goes into the instance after. Activated on every move: the same recipe only comes back to the top
+-- (ISCraftRecipeTooltip.lua:219-224), after the window was clicked over it.
+function Win:hookRecipeTip(b, recipeName)
+    local move, out = b.onMouseMove, b.onMouseMoveOutside
+    local win = self
+    b.onMouseMove = function(el, dx, dy)
+        if move then move(el, dx, dy) end
+        win:showRecipeTip(el, recipeName)
+    end
+    b.onMouseMoveOutside = function(el, dx, dy)
+        if out then out(el, dx, dy) end
+        win:hideRecipeTip(el)
+    end
+end
+
+function Win:showRecipeTip(b, recipeName)
+    local recipe = getScriptManager():getCraftRecipe(recipeName)
+    local player = getSpecificPlayer(0)
+    if recipe == nil or player == nil or ISCraftRecipeTooltip == nil or ISWidgetTitleHeader == nil then return end
+    local prev = rawget(ISWidgetTitleHeader, "player")
+    ISWidgetTitleHeader.player = player
+    local ok = pcall(ISCraftRecipeTooltip.activateToolTipFor, b, player, recipe, nil, true)
+    ISWidgetTitleHeader.player = prev
+    local tip = b.__toolTip
+    if tip and tip.titleWidget then tip.titleWidget.player = player end
+    if ok then self.craftTips[b] = true end
+end
+
+function Win:hideRecipeTip(b)
+    if self.craftTips[b] and ISCraftRecipeTooltip then ISCraftRecipeTooltip.deactivateToolTipFor(b) end
+    self.craftTips[b] = nil
+end
+
+-- Kahlua tables are Java maps: no removal while pairs walks one.
+function Win:hideRecipeTips()
+    local list = {}
+    for b in pairs(self.craftTips or {}) do list[#list + 1] = b end
+    for _, b in ipairs(list) do self:hideRecipeTip(b) end
+end
+
 -- ------------------------------------------------ settings tab
 
 -- The general sandbox page, in the order of sandbox-options.txt. kind: bool (checkbox), choice (one chip per value of
@@ -1033,8 +1244,6 @@ end
 Panel.GENERAL = {
     { key = "ReturnEmptyCapsule", kind = "bool", default = true },
     { key = "ReturnEmptySphere", kind = "bool", default = true },
-    { key = "AllowCraftCapsules", kind = "bool", default = false },
-    { key = "AllowCraftSpheres", kind = "bool", default = false },
     { key = "PackPermission", kind = "choice", count = 3, default = 1 },
     { key = "ZombieSoundRadius", kind = "int", min = 0, max = 50, default = 0 },
     { key = "AllowCargoTakeOut", kind = "bool", default = false },
@@ -1226,6 +1435,7 @@ function Panel.open()
     w.win:bringToTop()
     if w.tab == "settings" then w:loadSettings() end
     if w.tab == "types" then w:loadTypes() end
+    if w.tab == "craft" then w:loadCraft() end
     if w.tab == "loot" then w:loadLoot() end
     w:requestPage()
     return w

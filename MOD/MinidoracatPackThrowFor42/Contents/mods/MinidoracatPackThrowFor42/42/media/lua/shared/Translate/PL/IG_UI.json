@@ -111,5 +111,6 @@
     "IGUI_MinidoracatPackThrow_Factor_Unaware": "Nie zauważyło cię",
     "IGUI_MinidoracatPackThrow_Released": "Wypuszczono: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Pusta %1 wróciła do twojego ekwipunku.",
-    "IGUI_MinidoracatPackThrow_ReleaseFailed": "Zwierzę nie zostało wypuszczone"
+    "IGUI_MinidoracatPackThrow_ReleaseFailed": "Zwierzę nie zostało wypuszczone",
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
 }

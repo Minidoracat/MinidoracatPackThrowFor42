@@ -124,11 +124,18 @@ function Rules.typeOn(t)
     return t ~= nil and Rules.sandbox()["Type" .. t.id] ~= false
 end
 
--- Whether players may craft an empty one of type t (its recipe t.recipe, Recipes.lua): sandbox AllowCraftCapsules for
--- capsules, AllowCraftSpheres for spheres, both off by default (user 2026-10-19), and never a type switched off.
-function Rules.craftOn(t)
-    return t ~= nil and Rules.sandbox()[t.sphere and "AllowCraftSpheres" or "AllowCraftCapsules"] == true
-        and Rules.typeOn(t)
+-- The crafting level of type t: sandbox Craft<id>, 1 off (the default: nothing to craft), 2 easy, 3 standard, 4 hard
+-- (user 2026-10-25, design packthrow-craft-1025). Anything else, or no sandbox yet (main menu), counts as off.
+function Rules.craftLevel(t)
+    local v = t and tonumber(Rules.sandbox()["Craft" .. t.id])
+    if v == nil or v < 1 or v > 4 then return 1 end
+    return math.floor(v)
+end
+
+-- Whether players may craft type t at this level (its recipe Recipes.name(t, level)): only the one level the admin
+-- picked, never while it is off, never a type switched off.
+function Rules.craftOn(t, level)
+    return t ~= nil and level ~= nil and level > 1 and Rules.craftLevel(t) == level and Rules.typeOn(t)
 end
 
 -- The player's first empty capsule of type t (any depth in the inventory), or nil.

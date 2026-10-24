@@ -1,28 +1,61 @@
 module Base
 {
-    /* Crafting empty capsules and Pal Spheres, off until an admin turns it on (sandbox AllowCraftCapsules /
-       AllowCraftSpheres, user 2026-10-19). One recipe per type, CraftMinidoracatPackThrow<empty item> (Core t.recipe);
-       OnTest and OnAddToMenu both name the global MinidoracatPackThrow_craft<id> (lua/shared/MinidoracatPackThrow/
+    /* Crafting empty capsules and Pal Spheres: three recipes per type, CraftMinidoracatPackThrow<empty item><Level>
+       with Level Easy, Standard or Hard (Recipes.name). Sandbox Craft<id> picks the one level players get, or none (the
+       default; user 2026-10-25, design packthrow-craft-1025), and a type switched off is never crafted (Rules.craftOn).
+       OnTest and OnAddToMenu both name the global MinidoracatPackThrow_craft<id><Level> (lua/shared/MinidoracatPackThrow/
        Recipes.lua: OnTest resolves dotted names, OnAddToMenu only globals).
+       - category MinidoracatPackThrow: one craft category of this mod in both crafting windows. Its name is
+         IGUI_CraftingCategories_MinidoracatPackThrow (ISWidgetRecipeCategories.lua:100) and its Neat Crafting icon
+         media/ui/CategoryIcon/MinidoracatPackThrow.png (NC_CategoryList_Slot.lua:32-44); the spelling must match.
        - module Base: short recipe names resolve in Base only (family pitfalls.md "CraftRecipe"); items keep their
          module and are written as full types. NeedToBeLearn stays false: no magazine to keep.
        - Laid out like the vanilla electrical recipes (recipes_radio.txt CraftMakeshiftRadio, recipes_electrical.txt
-         MakeImprovisedFlashlight): a work surface (AnySurfaceCraft), MakingElectrical, Electrical category.
-       - The seven capsules take the same parts (only the looks differ): a car battery's power, any charge (drainable:
-         mode:destroy with ItemCount, else empty ones are swept up with it), a shell and the electronics.
+         MakeImprovisedFlashlight): a work surface (AnySurfaceCraft), MakingElectrical.
+       - Standard is the recipe of 0.3.0. Easy: skills -2 (none below 1), half the time and XP (none for a skill no
+         longer asked), no pliers, without the rarest part, half the counts (at least 1). Hard: skills +2, twice the
+         time, 1.5 times the XP, one rare part more, twice the counts of scrap, wire and screws.
+       - The seven capsules of one level take the same parts (only the looks differ): a car battery's power, any charge
+         (drainable: mode:destroy with ItemCount, else empty ones are swept up with it; the same for the battery of a
+         hard Pal Sphere), a shell and the electronics.
        - Pal Spheres climb like Palworld's: the Pal Sphere from parts, each higher tier from an empty one of the tier
-         below plus parts; a higher Electrical level each tier.
+         below plus parts, at every level.
        Names: Translate/<language>/Recipes.json, keyed by recipe name (Translator.getRecipeName). */
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleCartoon
+    craftRecipe CraftMinidoracatPackThrowCapsuleCartoonEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftCartoonEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftCartoonEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleCartoon,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleCartoonStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftCartoon,
-        OnAddToMenu = MinidoracatPackThrow_craftCartoon,
+        OnTest = MinidoracatPackThrow_craftCartoonStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftCartoonStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -41,15 +74,68 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleReal
+    craftRecipe CraftMinidoracatPackThrowCapsuleCartoonHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftCartoonHard,
+        OnAddToMenu = MinidoracatPackThrow_craftCartoonHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleCartoon,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleRealEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftRealEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftRealEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleReal,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleRealStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftReal,
-        OnAddToMenu = MinidoracatPackThrow_craftReal,
+        OnTest = MinidoracatPackThrow_craftRealStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftRealStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -68,15 +154,68 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleDust
+    craftRecipe CraftMinidoracatPackThrowCapsuleRealHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftRealHard,
+        OnAddToMenu = MinidoracatPackThrow_craftRealHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleReal,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleDustEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftDustEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftDustEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleDust,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleDustStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftDust,
-        OnAddToMenu = MinidoracatPackThrow_craftDust,
+        OnTest = MinidoracatPackThrow_craftDustStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftDustStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -95,15 +234,68 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleSteam
+    craftRecipe CraftMinidoracatPackThrowCapsuleDustHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftDustHard,
+        OnAddToMenu = MinidoracatPackThrow_craftDustHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleDust,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleSteamEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftSteamEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftSteamEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleSteam,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleSteamStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftSteam,
-        OnAddToMenu = MinidoracatPackThrow_craftSteam,
+        OnTest = MinidoracatPackThrow_craftSteamStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftSteamStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -122,15 +314,68 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleSciFi
+    craftRecipe CraftMinidoracatPackThrowCapsuleSteamHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftSteamHard,
+        OnAddToMenu = MinidoracatPackThrow_craftSteamHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleSteam,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleSciFiEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftSciFiEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftSciFiEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleSciFi,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleSciFiStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftSciFi,
-        OnAddToMenu = MinidoracatPackThrow_craftSciFi,
+        OnTest = MinidoracatPackThrow_craftSciFiStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftSciFiStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -149,15 +394,68 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleMagic
+    craftRecipe CraftMinidoracatPackThrowCapsuleSciFiHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftSciFiHard,
+        OnAddToMenu = MinidoracatPackThrow_craftSciFiHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleSciFi,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleMagicEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftMagicEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftMagicEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleMagic,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleMagicStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftMagic,
-        OnAddToMenu = MinidoracatPackThrow_craftMagic,
+        OnTest = MinidoracatPackThrow_craftMagicStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftMagicStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -176,15 +474,68 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowCapsuleShock
+    craftRecipe CraftMinidoracatPackThrowCapsuleMagicHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftMagicHard,
+        OnAddToMenu = MinidoracatPackThrow_craftMagicHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleMagic,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleShockEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:2,
+        OnTest = MinidoracatPackThrow_craftShockEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftShockEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+            item 1 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleShock,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowCapsuleShockStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:4;Mechanics:2,
-        OnTest = MinidoracatPackThrow_craftShock,
-        OnAddToMenu = MinidoracatPackThrow_craftShock,
+        OnTest = MinidoracatPackThrow_craftShockStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftShockStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20;Mechanics:10,
         inputs
         {
@@ -203,15 +554,65 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowSphereBasic
+    craftRecipe CraftMinidoracatPackThrowCapsuleShockHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:6;Mechanics:4,
+        OnTest = MinidoracatPackThrow_craftShockHard,
+        OnAddToMenu = MinidoracatPackThrow_craftShockHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30;Mechanics:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:carbattery] mode:destroy flags[ItemCount],
+            item 1 [Base.SmallSheetMetal],
+            item 8 [Base.ElectronicsScrap],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 4 [Base.ElectricWire],
+            item 4 [Base.Screws],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.CapsuleShock,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereBasicEasy
+    {
+        timedAction = MakingElectrical,
+        time = 50,
+        OnTest = MinidoracatPackThrow_craftSphereBasicEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereBasicEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:3,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 [Base.Baseball;Base.TennisBall;Base.TinCanEmpty],
+            item 1 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereBasic,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereBasicStandard
     {
         timedAction = MakingElectrical,
         time = 100,
         SkillRequired = Electricity:1,
-        OnTest = MinidoracatPackThrow_craftSphereBasic,
-        OnAddToMenu = MinidoracatPackThrow_craftSphereBasic,
+        OnTest = MinidoracatPackThrow_craftSphereBasicStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereBasicStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:5,
         inputs
         {
@@ -226,15 +627,61 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowSphereMega
+    craftRecipe CraftMinidoracatPackThrowSphereBasicHard
+    {
+        timedAction = MakingElectrical,
+        time = 200,
+        SkillRequired = Electricity:3,
+        OnTest = MinidoracatPackThrow_craftSphereBasicHard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereBasicHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:8,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 [Base.Baseball;Base.TennisBall;Base.TinCanEmpty],
+            item 4 [Base.ElectronicsScrap],
+            item 2 [Base.ElectricWire],
+            item 1 [Base.Battery] mode:destroy flags[ItemCount],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereBasic,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereMegaEasy
+    {
+        timedAction = MakingElectrical,
+        time = 75,
+        SkillRequired = Electricity:1,
+        OnTest = MinidoracatPackThrow_craftSphereMegaEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereMegaEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:5,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 [MinidoracatPackThrow.SphereBasic],
+            item 1 [Base.ElectronicsScrap],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereMega,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereMegaStandard
     {
         timedAction = MakingElectrical,
         time = 150,
         SkillRequired = Electricity:3,
-        OnTest = MinidoracatPackThrow_craftSphereMega,
-        OnAddToMenu = MinidoracatPackThrow_craftSphereMega,
+        OnTest = MinidoracatPackThrow_craftSphereMegaStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereMegaStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:10,
         inputs
         {
@@ -249,15 +696,63 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowSphereGiga
+    craftRecipe CraftMinidoracatPackThrowSphereMegaHard
+    {
+        timedAction = MakingElectrical,
+        time = 300,
+        SkillRequired = Electricity:5,
+        OnTest = MinidoracatPackThrow_craftSphereMegaHard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereMegaHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 [MinidoracatPackThrow.SphereBasic],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioReceiver] flags[NoBrokenItems],
+            item 4 [Base.ElectronicsScrap],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereMega,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereGigaEasy
+    {
+        timedAction = MakingElectrical,
+        time = 100,
+        SkillRequired = Electricity:3,
+        OnTest = MinidoracatPackThrow_craftSphereGigaEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereGigaEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:10,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 [MinidoracatPackThrow.SphereMega],
+            item 1 [Base.RadioReceiver] flags[NoBrokenItems],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereGiga,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereGigaStandard
     {
         timedAction = MakingElectrical,
         time = 200,
         SkillRequired = Electricity:5,
-        OnTest = MinidoracatPackThrow_craftSphereGiga,
-        OnAddToMenu = MinidoracatPackThrow_craftSphereGiga,
+        OnTest = MinidoracatPackThrow_craftSphereGigaStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereGigaStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:20,
         inputs
         {
@@ -275,15 +770,66 @@ module Base
         }
     }
 
-    craftRecipe CraftMinidoracatPackThrowSphereLegend
+    craftRecipe CraftMinidoracatPackThrowSphereGigaHard
+    {
+        timedAction = MakingElectrical,
+        time = 400,
+        SkillRequired = Electricity:7,
+        OnTest = MinidoracatPackThrow_craftSphereGigaHard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereGigaHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:30,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 [MinidoracatPackThrow.SphereMega],
+            item 1 [Base.RadioReceiver] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 1 [Base.MotionSensor] flags[NoBrokenItems],
+            item 6 [Base.ElectronicsScrap],
+            item 2 [Base.ElectricWire],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereGiga,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereLegendEasy
+    {
+        timedAction = MakingElectrical,
+        time = 125,
+        SkillRequired = Electricity:5,
+        OnTest = MinidoracatPackThrow_craftSphereLegendEasy,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereLegendEasy,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:15,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 [MinidoracatPackThrow.SphereGiga],
+            item 1 [Base.MotionSensor] flags[NoBrokenItems],
+            item 2 [Base.ElectronicsScrap],
+            item 1 [Base.ElectricWire],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereLegend,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereLegendStandard
     {
         timedAction = MakingElectrical,
         time = 250,
         SkillRequired = Electricity:7,
-        OnTest = MinidoracatPackThrow_craftSphereLegend,
-        OnAddToMenu = MinidoracatPackThrow_craftSphereLegend,
+        OnTest = MinidoracatPackThrow_craftSphereLegendStandard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereLegendStandard,
         Tags = AnySurfaceCraft,
-        category = Electrical,
+        category = MinidoracatPackThrow,
         xpAward = Electricity:30,
         inputs
         {
@@ -294,6 +840,33 @@ module Base
             item 1 [Base.Amplifier] flags[NoBrokenItems],
             item 4 [Base.ElectronicsScrap],
             item 2 [Base.ElectricWire],
+        }
+        outputs
+        {
+            item 1 MinidoracatPackThrow.SphereLegend,
+        }
+    }
+
+    craftRecipe CraftMinidoracatPackThrowSphereLegendHard
+    {
+        timedAction = MakingElectrical,
+        time = 500,
+        SkillRequired = Electricity:9,
+        OnTest = MinidoracatPackThrow_craftSphereLegendHard,
+        OnAddToMenu = MinidoracatPackThrow_craftSphereLegendHard,
+        Tags = AnySurfaceCraft,
+        category = MinidoracatPackThrow,
+        xpAward = Electricity:45,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[NoBrokenItems;Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeLight],
+            item 1 [MinidoracatPackThrow.SphereGiga],
+            item 1 [Base.MotionSensor] flags[NoBrokenItems],
+            item 1 [Base.Amplifier] flags[NoBrokenItems],
+            item 1 [Base.RadioTransmitter] flags[NoBrokenItems],
+            item 8 [Base.ElectronicsScrap],
+            item 4 [Base.ElectricWire],
         }
         outputs
         {

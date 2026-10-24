@@ -3898,78 +3898,185 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     loaded["TimedActions/ISBaseTimedAction"] = nil
 end)() end
 
-print("Craft：配方腳本（每種一條、膠囊材料相同、帕魯球逐級升級、電瓶按件）、沙盒閘門（預設關、款式停用）、Neat Crafting 過濾、16 種語言")
+print("Craft：33 條配方（每種三個難度、同難度膠囊材料相同、帕魯球逐級升級、電池按件）、逐款難度閘門、類別過濾、Neat Crafting 與原版類別包裝、開著的視窗重建、16 種語言")
 do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     require "MinidoracatPackThrow/Recipes"
-    local Recipes, Rules = M.Recipes, M.Rules
+    local Recipes, Rules, CAT = M.Recipes, M.Rules, M.Recipes.CATEGORY
+    local LEVELS = { 2, 3, 4 }
     local f = io.open(MEDIA .. "/../scripts/MinidoracatPackThrow_recipes.txt", "rb")
     local txt = f:read("*a"):gsub("/%*.-%*/", "")
     f:close()
-    local bad, inputs, n = {}, {}, 0
+    local bad, inputs, time, elec, n = {}, {}, {}, {}, 0
     for name, body in txt:gmatch("craftRecipe%s+([%w_]+)%s*(%b{})") do
         n = n + 1
-        local t = Recipes.TYPE[name]
-        if not t then
+        local v = Recipes.VARIANT[name]
+        if not v then
             bad[#bad + 1] = name .. " no type"
         else
-            local fn = "MinidoracatPackThrow_craft" .. t.id
+            local fn = "MinidoracatPackThrow_craft" .. v.t.id .. Recipes.LEVEL_NAME[v.level]
             if not (body:find("OnTest = " .. fn .. ",", 1, true) and body:find("OnAddToMenu = " .. fn .. ",", 1, true)
                 and type(_G[fn]) == "function") then bad[#bad + 1] = name .. " hooks" end
+            if not body:find("category = " .. CAT .. ",", 1, true) then bad[#bad + 1] = name .. " category" end
             local out = body:match("outputs%s*(%b{})") or ""
-            if not out:find("item 1 " .. t.empty .. ",", 1, true) then bad[#bad + 1] = name .. " output" end
-            inputs[t.id] = body:match("inputs%s*(%b{})") or ""
-            for line in inputs[t.id]:gmatch("[^\n]+") do
-                if line:find("carbattery", 1, true) and not (line:find("mode:destroy", 1, true)
+            if not out:find("item 1 " .. v.t.empty .. ",", 1, true) then bad[#bad + 1] = name .. " output" end
+            inputs[name] = body:match("inputs%s*(%b{})") or ""
+            for line in inputs[name]:gmatch("[^\n]+") do
+                if (line:find("carbattery", 1, true) or line:find("Base.Battery]", 1, true)) and not (line:find("mode:destroy", 1, true)
                     and line:find("ItemCount", 1, true)) then bad[#bad + 1] = name .. " battery" end
+            end
+            time[name] = tonumber(body:match("time = (%d+),"))
+            elec[name] = tonumber(body:match("SkillRequired = [^,]-Electricity:(%d+)")) or 0
+        end
+    end
+    check(n == 3 * #M.TYPES and #bad == 0, "每種三條配方（簡易、標準、困難），OnTest 與 OnAddToMenu 都指向存在的全域函式、在「丟出收納」類別、"
+        .. "產出那一種空的；電池 destroy 帶 ItemCount（" .. n .. " 條；" .. table.concat(bad, ",") .. "）")
+    local same, chain, harder = true, true, true
+    for _, t in ipairs(M.TYPES) do
+        for _, level in ipairs(LEVELS) do
+            local name = Recipes.name(t, level)
+            if not t.sphere and inputs[name] ~= inputs[Recipes.name(M.TYPES[1], level)] then same = false end
+            local below = M.TYPES[t.index - 1]
+            local takes = (inputs[name] or ""):find("[" .. (below and below.empty or "-") .. "]", 1, true) ~= nil
+            if t.sphere and takes ~= (t ~= M.FIRST_SPHERE) then chain = false end
+            if level > 2 then
+                local easier = Recipes.name(t, level - 1)
+                if not (time[name] > time[easier] and elec[name] > elec[easier]) then harder = false end
             end
         end
     end
-    local same, chain = true, true
-    for _, t in ipairs(M.TYPES) do
-        if not t.sphere and inputs[t.id] ~= inputs.Cartoon then same = false end
-        local below = M.TYPES[t.index - 1]
-        local takes = (inputs[t.id] or ""):find("[" .. (below and below.empty or "-") .. "]", 1, true) ~= nil
-        if t.sphere and takes ~= (t ~= M.FIRST_SPHERE) then chain = false end
-    end
-    check(n == #M.TYPES and #bad == 0, "每種一條配方，OnTest 與 OnAddToMenu 都指向存在的全域函式、產出那一種空的；"
-        .. "汽車電瓶 destroy 帶 ItemCount（" .. n .. " 條；" .. table.concat(bad, ",") .. "）")
-    check(same and inputs.Cartoon:find("carbattery", 1, true) ~= nil, "七種膠囊的材料與工具完全相同（款式只差外觀）")
-    check(chain, "帕魯球從零件做起，高級以上各用下一級的空帕魯球升級")
+    check(same, "同一個難度，七種膠囊的材料與工具完全相同（款式只差外觀）")
+    check(chain, "每個難度的帕魯球都從零件做起，高級以上各用下一級的空帕魯球升級")
+    check(harder, "每一種都是簡易 < 標準 < 困難：時間與電工等級逐級提高")
 
     local saved = SandboxVars
-    local function on(id) return _G["MinidoracatPackThrow_craft" .. id]() == true end
-    local function agrees()
+    local function on(t, level) return _G["MinidoracatPackThrow_craft" .. t.id .. Recipes.LEVEL_NAME[level]]() == true end
+    -- every hook, Rules.craftOn and the list filter agree; returns the recipes players get, as "<id><Level>,..."
+    local function open()
+        local list, agree = {}, true
         for _, t in ipairs(M.TYPES) do
-            if on(t.id) ~= Rules.craftOn(t) or Recipes.hidden(t.recipe) == on(t.id) then return false end
+            for _, level in ipairs(LEVELS) do
+                local yes = on(t, level)
+                if yes ~= Rules.craftOn(t, level) or Recipes.hidden(Recipes.name(t, level)) == yes then agree = false end
+                if yes then list[#list + 1] = t.id .. Recipes.LEVEL_NAME[level] end
+            end
         end
-        return true
+        return agree and table.concat(list, ",") or "DISAGREE"
     end
+    local T = M.TYPE_BY_ID
     SandboxVars = nil
-    check(not on("Cartoon") and not on("SphereBasic") and agrees(), "沙盒還沒讀到（主選單）：一律不能做")
+    check(open() == "" and not Recipes.anyOpen() and Rules.craftLevel(T.Cartoon) == 1, "沙盒還沒讀到（主選單）：一律不能做")
     SandboxVars = { MinidoracatPackThrow = {} }
-    check(not on("Cartoon") and not on("SphereLegend") and agrees(), "預設關：膠囊與帕魯球都不能做")
-    SandboxVars = { MinidoracatPackThrow = { AllowCraftCapsules = true } }
-    check(on("Cartoon") and on("Shock") and not on("SphereBasic") and agrees(), "只開膠囊：七種膠囊能做，帕魯球不能")
-    SandboxVars = { MinidoracatPackThrow = { AllowCraftSpheres = true, TypeSphereGiga = false } }
-    check(on("SphereBasic") and on("SphereLegend") and not on("SphereGiga") and not on("Cartoon") and agrees(),
-        "只開帕魯球：停用的優質帕魯球不能做，其他等級能做，膠囊不能")
-    SandboxVars = { MinidoracatPackThrow = { AllowCraftCapsules = true, AllowCraftSpheres = true, TypeSteam = false } }
-    check(not on("Steam") and on("Real") and on("SphereGiga") and agrees(), "兩個都開：停用的蒸汽膠囊不能做")
-    check(Recipes.hidden("CraftMinidoracatPackThrowCapsuleSteam") and not Recipes.hidden("CraftMinidoracatPackThrowCapsuleReal")
-        and not Recipes.hidden("OpenCannedFood") and not Recipes.hidden(nil), "清單過濾只藏本 MOD 不能做的配方，其他配方不碰")
+    check(open() == "" and not Recipes.anyOpen(), "預設：11 種都不開放，33 條都藏")
+    SandboxVars = { MinidoracatPackThrow = { CraftCartoon = 4 } }
+    check(open() == "CartoonHard" and Recipes.anyOpen(), "卡通膠囊選困難：只有卡通膠囊（困難）看得到、做得出來")
+    SandboxVars = { MinidoracatPackThrow = { CraftReal = 3, CraftSphereGiga = 2 } }
+    check(open() == "RealStandard,SphereGigaEasy", "各選各的：寫實膠囊標準、優質帕魯球簡易，其他都不開放")
+    SandboxVars = { MinidoracatPackThrow = { CraftSteam = 3, TypeSteam = false } }
+    check(open() == "" and not Recipes.anyOpen(), "「種類」停用的蒸汽膠囊，選了標準也一條都不開放")
+    SandboxVars = { MinidoracatPackThrow = { CraftCartoon = 7, CraftReal = 0 } }
+    check(open() == "", "沙盒值超出 1–4：當作不開放")
+    check(not Recipes.hidden("OpenCannedFood") and not Recipes.hidden(nil) and not Recipes.hidden(M.TYPES[1].recipe),
+        "清單過濾只藏本 MOD 不開放的配方，其他配方（含沒有難度的舊名）不碰")
 
+    local function list(...)
+        local l = ArrayList.new()
+        for _, s in ipairs({ ... }) do l:add(s) end
+        return l
+    end
+    local function names(l)
+        local out = {}
+        for i = 0, l:size() - 1 do out[#out + 1] = l:get(i) end
+        return table.concat(out, ",")
+    end
+    local cats = list("Electrical", CAT, "Tools")
+    SandboxVars = { MinidoracatPackThrow = {} }
+    local plain = list("Electrical", "Tools")
+    check(names(Recipes.categories(cats)) == "Electrical,Tools" and Recipes.categories(plain) == plain,
+        "全部不開放：類別清單拿掉「丟出收納」，其他類別照順序留著；清單裡本來就沒有它就原樣回傳")
+    SandboxVars = { MinidoracatPackThrow = { CraftSphereBasic = 2 } }
+    check(Recipes.categories(cats) == cats, "有一條開放：類別清單原樣回傳")
+
+    local savedG = { nc = NC_FilterBar, panel = ISHandCraftPanel, ncCats = NC_CategoryList_Panel, ui = ISEntityUI }
     local function recipe(name) return { getName = function() return name end } end
-    local savedNC = NC_FilterBar
     NC_FilterBar = { shouldIncludeRecipe = function(_, r) return r:getName() ~= "OriginalNo" end }
-    local first, again = Recipes.wrapNeatCrafting(), Recipes.wrapNeatCrafting()
+    ISHandCraftPanel = { getCategoryList = function(self) return self.logic:getCategoryList() end }
+    NC_CategoryList_Panel = { populateCategoryList = function(self)
+        if self.boom then error("boom") end
+        self.got = names(self.logic:getCategoryList())
+    end }
+    local first, again = Recipes.wrapCraftWindows(), Recipes.wrapCraftWindows()
+    local logic = { getCategoryList = function() return list("Electrical", CAT) end }
+    local van = setmetatable({ logic = logic }, { __index = ISHandCraftPanel })
+    local nc = setmetatable({ logic = logic }, { __index = NC_CategoryList_Panel })
+    SandboxVars = { MinidoracatPackThrow = {} }
+    nc:populateCategoryList()
     local F = NC_FilterBar
-    check(first and not again and not F:shouldIncludeRecipe(recipe("CraftMinidoracatPackThrowCapsuleSteam"))
-        and F:shouldIncludeRecipe(recipe("CraftMinidoracatPackThrowCapsuleReal")) and F:shouldIncludeRecipe(recipe("OpenCannedFood"))
-        and not F:shouldIncludeRecipe(recipe("OriginalNo")),
-        "Neat Crafting：包一次就好，不能做的配方不列，其他照它原本的判斷")
-    NC_FilterBar = nil
-    check(Recipes.wrapNeatCrafting() == false, "沒裝 Neat Crafting：什麼都不包")
-    NC_FilterBar, SandboxVars = savedNC, saved
+    check(first and not again and not F:shouldIncludeRecipe(recipe(Recipes.name(T.Steam, 3)))
+        and F:shouldIncludeRecipe(recipe("OpenCannedFood")) and not F:shouldIncludeRecipe(recipe("OriginalNo"))
+        and names(van:getCategoryList()) == "Electrical" and nc.got == "Electrical" and nc.logic == logic,
+        "包一次就好；全部不開放時 Neat Crafting 不列配方、兩種視窗都沒有「丟出收納」類別，其他照原本；換掉的 logic 會換回來")
+    SandboxVars = { MinidoracatPackThrow = { CraftSteam = 3 } }
+    nc:populateCategoryList()
+    check(F:shouldIncludeRecipe(recipe(Recipes.name(T.Steam, 3))) and not F:shouldIncludeRecipe(recipe(Recipes.name(T.Steam, 4)))
+        and names(van:getCategoryList()) == "Electrical," .. CAT and nc.got == "Electrical," .. CAT,
+        "蒸汽膠囊選標準：Neat Crafting 只列標準那條，兩種視窗都有「丟出收納」類別")
+    SandboxVars = { MinidoracatPackThrow = {} }
+    nc.boom = true
+    local okBoom = pcall(nc.populateCategoryList, nc)
+    check(not okBoom and nc.logic == logic, "Neat Crafting 的類別清單出錯：錯誤照樣丟出，logic 也換回原本的")
+    NC_FilterBar, ISHandCraftPanel, NC_CategoryList_Panel = nil, nil, nil
+    check(Recipes.wrapCraftWindows() == false, "沒有這些視窗（沒裝 Neat Crafting、伺服器）：什麼都不包")
+
+    local calls = {}
+    local function has(s)
+        for _, c in ipairs(calls) do if c == s then return true end end
+        return false
+    end
+    local ncCats = { selectedCategory = CAT,
+        populateCategoryList = function() calls[#calls + 1] = "ncCats" end,
+        onCategoryChanged = function(_, v, skip) calls[#calls + 1] = "ncSelect:" .. v .. ":" .. tostring(skip) end }
+    ISEntityUI = { players = { [0] = { windows = {
+        nc = { instance = { HandCraftPanel = { categoryPanel = ncCats,
+            updateRecipeDisplay = function() calls[#calls + 1] = "ncList" end } } },
+        vanilla = { instance = { handCraftPanel = { refreshRecipeList = function(_, force) calls[#calls + 1] = "van:" .. tostring(force) end } } },
+        closed = {} } } } }
+    local count = Recipes.refreshOpen()
+    check(count == 2 and has("ncCats") and has("ncList") and has("van:true") and has("ncSelect::true"),
+        "重建開著的視窗：原版強制重抓配方；Neat Crafting 重建類別與清單，選著已消失的「丟出收納」就回到全部（不記進上一頁）")
+    calls = {}
+    SandboxVars = { MinidoracatPackThrow = { CraftReal = 2 } }
+    Recipes.refreshOpen()
+    check(has("ncCats") and not has("ncSelect::true"), "還有開放的配方：選著的「丟出收納」類別不動")
+
+    local refreshes, realRefresh = 0, Recipes.refreshOpen
+    Recipes.refreshOpen = function() refreshes = refreshes + 1 end
+    Recipes.lastKey = nil
+    SandboxVars = { MinidoracatPackThrow = {} }
+    Recipes.watch()
+    Recipes.watch()
+    local quiet0 = refreshes
+    SandboxVars = { MinidoracatPackThrow = { CraftReal = 2 } }
+    Recipes.watch()
+    local afterLevel = refreshes
+    SandboxVars = { MinidoracatPackThrow = { CraftReal = 2, TypeReal = false } }
+    Recipes.watch()
+    check(quiet0 == 0 and afterLevel == 1 and refreshes == 2,
+        "每分鐘比對：第一次只記下、沒變不重建；改難度或停用款式就重建開著的視窗")
+    Recipes.refreshOpen = realRefresh
+    NC_FilterBar, ISHandCraftPanel, NC_CategoryList_Panel, ISEntityUI = savedG.nc, savedG.panel, savedG.ncCats, savedG.ui
+    SandboxVars = saved
+
+    local sbTxt = io.open(MEDIA .. "/../sandbox-options.txt", "rb")
+    local opts = sbTxt:read("*a")
+    sbTxt:close()
+    local optBad = {}
+    for _, t in ipairs(M.TYPES) do
+        if not opts:find("option MinidoracatPackThrow%.Craft" .. t.id .. "%s*{type = enum, numValues = 4, default = 1, "
+            .. "page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_Craft" .. t.id
+            .. ", valueTranslation = MinidoracatPackThrow_CraftLevel,}") then optBad[#optBad + 1] = t.id end
+    end
+    if opts:find("option MinidoracatPackThrow.AllowCraft", 1, true) then optBad[#optBad + 1] = "AllowCraft" end
+    check(#optBad == 0, "沙盒每種一個 Craft<id>：四段、預設不開放、在「製作」頁；舊的兩個總開關已拿掉（" .. table.concat(optBad, ",") .. "）")
 
     local missing = {}
     for _, lang in ipairs({ "AR", "CH", "CN", "DE", "EN", "ES", "ES_CL", "ES_MX", "FR", "JP", "KO", "PL", "PT", "PTBR", "RU", "TR" }) do
@@ -3981,17 +4088,31 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
             h:close()
             return M.Json.decode(s) or {}
         end
-        local names, sb = json("Recipes.json"), json("Sandbox.json")
+        local recipes, sb, ui, ig = json("Recipes.json"), json("Sandbox.json"), json("UI.json"), json("IG_UI.json")
         for _, t in ipairs(M.TYPES) do
-            if not names[t.recipe] then missing[#missing + 1] = lang .. ":" .. t.recipe end
-        end
-        for _, k in ipairs({ "AllowCraftCapsules", "AllowCraftSpheres" }) do
+            local seen = {}
+            for _, level in ipairs(LEVELS) do
+                local s = recipes[Recipes.name(t, level)]
+                if not s or s == "" or seen[s] then missing[#missing + 1] = lang .. ":" .. Recipes.name(t, level) end
+                if s then seen[s] = true end
+            end
+            if recipes[t.recipe] then missing[#missing + 1] = lang .. ":old " .. t.recipe end
             for _, s in ipairs({ "", "_tooltip" }) do
-                if not sb["Sandbox_MinidoracatPackThrow_" .. k .. s] then missing[#missing + 1] = lang .. ":" .. k .. s end
+                if not sb["Sandbox_MinidoracatPackThrow_Craft" .. t.id .. s] then missing[#missing + 1] = lang .. ":Craft" .. t.id .. s end
             end
         end
+        for v = 1, 4 do
+            if not sb["Sandbox_MinidoracatPackThrow_CraftLevel_option" .. v] then missing[#missing + 1] = lang .. ":CraftLevel" .. v end
+        end
+        if not sb.Sandbox_MinidoracatPackThrowCraft then missing[#missing + 1] = lang .. ":page" end
+        if sb.Sandbox_MinidoracatPackThrow_AllowCraftCapsules then missing[#missing + 1] = lang .. ":old AllowCraft" end
+        if not ig["IGUI_CraftingCategories_" .. CAT] then missing[#missing + 1] = lang .. ":category" end
+        for _, k in ipairs({ "TabCraft", "CraftGroupCapsules", "CraftGroupSpheres", "CraftOffLine", "CraftTypeOff", "CraftNoSkill", "CraftNote" }) do
+            if not ui["UI_MinidoracatPackThrow_" .. k] then missing[#missing + 1] = lang .. ":" .. k end
+        end
     end
-    check(#missing == 0, "16 種語言都有 11 條配方名與兩個製作開關（" .. table.concat(missing, ",", 1, math.min(#missing, 12)) .. "）")
+    check(#missing == 0, "16 種語言都有 33 條各不相同的配方名、類別名、11 個製作難度選項與四個難度、製作分頁的字（"
+        .. table.concat(missing, ",", 1, math.min(#missing, 12)) .. "）")
 end)() end
 
 print()

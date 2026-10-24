@@ -111,5 +111,6 @@
     "IGUI_MinidoracatPackThrow_Factor_Unaware": "没发现你",
     "IGUI_MinidoracatPackThrow_Released": "已放出：%1",
     "IGUI_MinidoracatPackThrow_SphereBack": "空的%1回到你的背包。",
-    "IGUI_MinidoracatPackThrow_ReleaseFailed": "没有放出动物"
+    "IGUI_MinidoracatPackThrow_ReleaseFailed": "没有放出动物",
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "丢出收纳"
 }

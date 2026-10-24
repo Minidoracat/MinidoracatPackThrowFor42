@@ -111,5 +111,6 @@
     "IGUI_MinidoracatPackThrow_Factor_Unaware": "Ne vous a pas repéré",
     "IGUI_MinidoracatPackThrow_Released": "Libéré : %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Une %1 vide est revenue dans votre inventaire.",
-    "IGUI_MinidoracatPackThrow_ReleaseFailed": "L'animal n'a pas été libéré"
+    "IGUI_MinidoracatPackThrow_ReleaseFailed": "L'animal n'a pas été libéré",
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
 }

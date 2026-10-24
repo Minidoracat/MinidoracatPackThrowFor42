@@ -111,5 +111,6 @@
     "IGUI_MinidoracatPackThrow_Factor_Unaware": "気づかれていない",
     "IGUI_MinidoracatPackThrow_Released": "出しました：%1",
     "IGUI_MinidoracatPackThrow_SphereBack": "空の%1がインベントリに戻りました。",
-    "IGUI_MinidoracatPackThrow_ReleaseFailed": "動物を出せませんでした"
+    "IGUI_MinidoracatPackThrow_ReleaseFailed": "動物を出せませんでした",
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "投げて収納"
 }

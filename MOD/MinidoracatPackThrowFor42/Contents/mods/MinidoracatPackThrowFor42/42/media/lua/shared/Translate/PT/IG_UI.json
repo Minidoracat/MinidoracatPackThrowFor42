@@ -111,5 +111,6 @@
     "IGUI_MinidoracatPackThrow_Factor_Unaware": "Desprevenido",
     "IGUI_MinidoracatPackThrow_Released": "Solto: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Uma %1 vazia voltou para o seu inventário.",
-    "IGUI_MinidoracatPackThrow_ReleaseFailed": "O animal não foi solto"
+    "IGUI_MinidoracatPackThrow_ReleaseFailed": "O animal não foi solto",
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
 }

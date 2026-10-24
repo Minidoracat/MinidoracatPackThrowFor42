@@ -1,6 +1,6 @@
 VERSION = 1,
 
-/* 丟出收納。選項鍵不可改名。三頁的值也是管理面板「設定」「種類」「戰利品」分頁改的那一組（不另存設定）。 */
+/* 丟出收納。選項鍵不可改名。四頁的值也是管理面板「設定」「種類」「製作」「戰利品」分頁改的那一組（不另存設定）。 */
 
 /* ===== MinidoracatPackThrow：一般 ===== */
 
@@ -11,14 +11,6 @@ option MinidoracatPackThrow.ReturnEmptyCapsule
 /* 帕魯球放出動物後把一顆同等級的空帕魯球還給玩家 */
 option MinidoracatPackThrow.ReturnEmptySphere
 {type = boolean, default = true, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_ReturnEmptySphere,}
-
-/* 玩家可以在工作台用原版零件製作七種空膠囊（scripts/MinidoracatPackThrow_recipes.txt；Rules.craftOn，「可以收車」關掉的款式不能做）。預設關（使用者 2026-10-19） */
-option MinidoracatPackThrow.AllowCraftCapsules
-{type = boolean, default = false, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_AllowCraftCapsules,}
-
-/* 玩家可以製作空帕魯球：帕魯球用零件做，高級以上用下一級的空帕魯球升級（同一個配方檔；「可以抓動物」關掉的等級不能做）。預設關 */
-option MinidoracatPackThrow.AllowCraftSpheres
-{type = boolean, default = false, page = MinidoracatPackThrow, translation = MinidoracatPackThrow_AllowCraftSpheres,}
 
 /* 誰能收車（Vehicle Manager 沒綁定的車才看這個；綁定的車問它的 canUse(TOW)）：1 有這台車鑰匙的人（背包或點火孔）、2 任何人、3 只有管理員 */
 option MinidoracatPackThrow.PackPermission
@@ -145,6 +137,44 @@ option MinidoracatPackThrow.TypeSphereLegend
 
 option MinidoracatPackThrow.TypeSphereLegendLoot
 {type = boolean, default = true, page = MinidoracatPackThrowTypes, translation = MinidoracatPackThrow_TypeSphereLegendLoot,}
+
+/* ===== MinidoracatPackThrowCraft：每種一個製作難度（shared/Core.lua M.TYPES 依序；配方 scripts/MinidoracatPackThrow_recipes.txt，
+   每種三條 CraftMinidoracatPackThrow<空物品><Easy|Standard|Hard>，Recipes.lua）。1 不開放、2 簡易、3 標準、4 困難（Rules.craftLevel）；
+   只有選的那條看得到、搜得到、做得出來，不開放時製作視窗也不列「丟出收納」類別。「種類」頁關掉「使用」的照樣不能做（Rules.craftOn）。
+   預設全部不開放（使用者 2026-10-25，設計稿 packthrow-craft-1025；取代 0.3.0 的 AllowCraftCapsules／AllowCraftSpheres，舊值不轉換） ===== */
+
+option MinidoracatPackThrow.CraftCartoon
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftCartoon, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftReal
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftReal, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftDust
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftDust, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftSteam
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftSteam, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftSciFi
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftSciFi, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftMagic
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftMagic, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftShock
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftShock, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftSphereBasic
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftSphereBasic, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftSphereMega
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftSphereMega, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftSphereGiga
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftSphereGiga, valueTranslation = MinidoracatPackThrow_CraftLevel,}
+
+option MinidoracatPackThrow.CraftSphereLegend
+{type = enum, numValues = 4, default = 1, page = MinidoracatPackThrowCraft, translation = MinidoracatPackThrow_CraftSphereLegend, valueTranslation = MinidoracatPackThrow_CraftLevel,}
 
 /* ===== MinidoracatPackThrowLoot：戰利品（膠囊四個地點、帕魯球三個地點，各自開關與權重；權重直接寫進原版 ProceduralDistributions） ===== */
 
