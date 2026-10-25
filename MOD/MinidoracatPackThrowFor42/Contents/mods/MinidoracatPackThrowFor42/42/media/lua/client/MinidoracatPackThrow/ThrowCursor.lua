@@ -181,7 +181,11 @@ function Cursor:face(x, y)
     return true
 end
 
+-- Only the active drag draws. Another mod's OnDoTileBuilding2 handler gets this same table in the frame the click closed
+-- it (IsoCell.java:2612; vanilla tryBuild has already run setDrag(nil) -> deactivate, then create) and may render it
+-- again: a tooltip made then is never removed (Workshop report 2026-10-25, E2E cursortip-sp).
 function Cursor:render(x, y, z, square)
+    if getCell():getDrag(self.player) ~= self then return self:hideTooltip() end
     self:face(x, y)
     local c = self.why == nil and getCore():getGoodHighlitedColor() or getCore():getBadHighlitedColor()
     local sprite = self:getFloorCursorSprite()

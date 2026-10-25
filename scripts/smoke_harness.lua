@@ -3825,7 +3825,7 @@ end)() end
 
 print("ThrowCursor：丟出與抓取的游標開著時，站著的角色轉向瞄準的那一格（按下時已經面向目標，不用等轉身）")
 do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
-    local saved = { core = getCore, queue = ISTimedActionQueue }
+    local saved = { core = getCore, queue = ISTimedActionQueue, cell = getCell }
     for _, n in ipairs({ "TimedActions/ISThrowCapsuleAction", "TimedActions/ISPressCapsuleAction" }) do loaded[n] = true end
     loadfile(MEDIA .. "/client/MinidoracatPackThrow/ThrowCursor.lua")()
     local Cursor = M.ThrowCursor
@@ -3866,9 +3866,72 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     local c = cursor("throw", p)
     c.getFloorCursorSprite = function() return { RenderGhostTileColor = function() end } end
     c.renderTooltip = function() end
+    getCell = function() return { getDrag = function() return c end } end -- the open cursor is the drag
     c:render(13, 17, 0, {})
     check(table.concat(p.faced, ";") == "13,17", "游標每一幀的 render 都轉向滑鼠下的那一格")
-    getCore, ISTimedActionQueue = saved.core, saved.queue
+    getCore, ISTimedActionQueue, getCell = saved.core, saved.queue, saved.cell
+end)() end
+
+print("ThrowCursor：丟出後同一幀別的 MOD 再畫一次游標，提示框不留在畫面上（Workshop 留言 2026-10-25）")
+do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
+    local saved = { cell = getCell, core = getCore, queue = ISTimedActionQueue, menu = ISWorldObjectContextMenu,
+        inv = ISInventoryPaneContextMenu, bo = ISBuildingObject, joy = JoypadState, act = ISThrowCapsuleAction }
+    local Cursor = M.ThrowCursor
+    -- IsoCell.setDrag: deactivates the previous drag, found the way KahluaTableImpl.rawget finds it (the instance, then
+    -- the metatable's own keys: IsoCell.java:2558-2568, KahluaTableImpl.java:98)
+    local drag
+    local cell = { getDrag = function() return drag end }
+    function cell:setDrag(item)
+        if drag and drag ~= item then
+            local t, f = drag, nil
+            while t and f == nil do f = rawget(t, "deactivate"); t = getmetatable(t) end
+            if f then f(drag) end
+        end
+        drag = item
+    end
+    getCell = function() return cell end
+    local col = { getR = function() return 1 end, getG = function() return 1 end, getB = function() return 1 end }
+    getCore = function()
+        return { getGoodHighlitedColor = function() return col end, getBadHighlitedColor = function() return col end }
+    end
+    local shown, queued = {}, 0 -- tooltips in the UI manager; throws queued
+    ISWorldObjectContextMenu = { addToolTip = function()
+        local t = { backgroundColor = {} }
+        function t:setVisible(v) self.visible = v end
+        function t:addToUIManager() shown[self] = true end
+        function t:removeFromUIManager() shown[self] = nil end
+        return t
+    end }
+    local function onScreen()
+        local n = 0
+        for t in pairs(shown) do if t.visible then n = n + 1 end end
+        return n
+    end
+    ISTimedActionQueue = { isPlayerDoingAction = function() return false end, add = function() queued = queued + 1 end }
+    ISInventoryPaneContextMenu = { transferIfNeeded = function() end }
+    ISThrowCapsuleAction = { new = function() return {} end }
+    ISBuildingObject = { derive = function(self, name) return setmetatable({ Type = name }, { __index = self }) end,
+        init = function() end, getFloorCursorSprite = function() return { RenderGhostTileColor = function() end } end }
+    JoypadState = { players = {} }
+    local p = { getPlayerNum = function() return 0 end, isPlayerMoving = function() return false end,
+        getVehicle = function() end, isSitOnGround = function() return false end, getX = function() return 10.5 end,
+        getY = function() return 20.5 end, faceLocation = function() end }
+    Cursor.onInfo({ capsuleId = 7, ok = true, script = "Base.TestCar" })
+    local cur = Cursor.new(p, { getID = function() return 7 end }, "throw")
+    cell:setDrag(cur)
+    cur:render(15, 20, 0, {})
+    local before = onScreen()
+    -- the left click (vanilla tryBuild with dragNilAfterPlace and skipBuildAction): setDrag(nil) -> deactivate, create
+    cell:setDrag(nil)
+    cur:create(15, 20, 0)
+    local closed = onScreen()
+    -- a second OnDoTileBuilding2 handler gets the same table in the same frame (IsoCell.java:2612) and draws it again
+    cur:render(15, 20, 0, {})
+    check(before == 1 and closed == 0 and queued == 1 and onScreen() == 0,
+        "丟出後（游標已關、已排入丟出）同一幀別的 MOD 再畫一次游標：提示框不再出現（開著 " .. before .. "、關掉 " .. closed
+        .. "、再畫一次後 " .. onScreen() .. "）")
+    getCell, getCore, ISTimedActionQueue, ISWorldObjectContextMenu = saved.cell, saved.core, saved.queue, saved.menu
+    ISInventoryPaneContextMenu, ISBuildingObject, JoypadState, ISThrowCapsuleAction = saved.inv, saved.bo, saved.joy, saved.act
 end)() end
 
 print("ISThrowCapsuleAction:waitToStart：只等真的要轉身的角度；腰扭得過去的小角度馬上丟（使用者 2026-10-16 還是等一兩秒）")
