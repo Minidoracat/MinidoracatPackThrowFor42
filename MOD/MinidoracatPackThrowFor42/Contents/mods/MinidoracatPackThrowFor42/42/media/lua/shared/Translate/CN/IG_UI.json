@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "已放出：%1",
     "IGUI_MinidoracatPackThrow_SphereBack": "空的%1回到你的背包。",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "没有放出动物",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "丢出收纳"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "丢出收纳",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "修正：收车可能收走正上方或正下方的另一台车。那颗胶囊在那台车原本停的地方。"
 }

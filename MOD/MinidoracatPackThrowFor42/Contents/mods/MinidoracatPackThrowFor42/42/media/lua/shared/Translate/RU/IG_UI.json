@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "Выпущено: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Пустая %1 вернулась в ваш инвентарь.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "Животное не выпущено",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Исправлено: упаковка могла забрать транспорт этажом выше или ниже. Его капсула лежит там, где он стоял."
 }

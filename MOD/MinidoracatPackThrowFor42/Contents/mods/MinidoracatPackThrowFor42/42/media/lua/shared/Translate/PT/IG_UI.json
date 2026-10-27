@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "Solto: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Uma %1 vazia voltou para o seu inventário.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "O animal não foi solto",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Corrigido: guardar podia levar um veículo do piso de cima ou de baixo. A cápsula está onde ele estava."
 }

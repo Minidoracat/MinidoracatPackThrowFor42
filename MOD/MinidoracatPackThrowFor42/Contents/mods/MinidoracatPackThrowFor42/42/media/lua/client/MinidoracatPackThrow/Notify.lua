@@ -17,6 +17,22 @@ local function ui()
     return nil
 end
 
+-- Update note (framework rev 24, WhatsNew): the first game after an update shows this version's note at the top right.
+-- The release train's ready reads this block with a regex: literal strings, one field per line; since moves to the new
+-- version only when a release writes a new note (family conventions.md, in-game update note).
+pcall(require, "MinidoracatUI/WhatsNew")
+do
+    local UI = ui()
+    if UI and UI.API_REVISION >= 24 and UI.CAPABILITIES.whatsNew and UI.WhatsNew then
+        UI.WhatsNew.register({
+            modId = "MinidoracatPackThrowFor42",
+            since = "0.5.3",
+            name = "UI_MinidoracatPackThrow_OptionsTitle",
+            text = "IGUI_MinidoracatPackThrow_WhatsNew",
+        })
+    end
+end
+
 local function remember(kind, title, text)
     Notify.shown[#Notify.shown + 1] = { kind = kind, title = title, text = text }
     M.log("NOTIFY " .. kind .. " " .. tostring(title) .. " | " .. tostring(text))

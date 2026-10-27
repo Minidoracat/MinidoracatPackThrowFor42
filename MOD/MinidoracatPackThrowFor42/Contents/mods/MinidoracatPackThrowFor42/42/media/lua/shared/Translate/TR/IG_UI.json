@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "Serbest bırakıldı: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Boş %1 envanterine geri döndü.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "Hayvan serbest bırakılmadı",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Düzeltildi: paketleme üst veya alt kattaki bir aracı alabiliyordu. Kapsülü, aracın durduğu yerde."
 }

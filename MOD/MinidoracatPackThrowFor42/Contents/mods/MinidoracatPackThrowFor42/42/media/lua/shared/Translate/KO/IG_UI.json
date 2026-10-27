@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "꺼냈습니다: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "빈 %1이(가) 인벤토리로 돌아왔습니다.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "동물을 꺼내지 못했습니다",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "던져서 수납"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "던져서 수납",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "수정: 위층이나 아래층의 다른 차량을 넣을 수 있었습니다. 그 캡슐은 그 차량이 있던 자리에 있습니다."
 }

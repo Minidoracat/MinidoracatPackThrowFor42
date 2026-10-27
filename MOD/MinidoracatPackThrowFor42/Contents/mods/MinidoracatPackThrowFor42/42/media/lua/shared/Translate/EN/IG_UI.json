@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "Released: %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "An empty %1 is back in your inventory.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "The animal was not released",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Fixed: packing could take a vehicle a floor above or below. Its capsule is where that vehicle stood."
 }

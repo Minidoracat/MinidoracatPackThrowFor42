@@ -112,5 +112,6 @@
     "IGUI_MinidoracatPackThrow_Released": "Libéré : %1",
     "IGUI_MinidoracatPackThrow_SphereBack": "Une %1 vide est revenue dans votre inventaire.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "L'animal n'a pas été libéré",
-    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw"
+    "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Corrigé : ranger pouvait prendre un véhicule à l'étage au-dessus ou en dessous. Sa capsule est là où il était."
 }
