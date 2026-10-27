@@ -2789,6 +2789,21 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
     truck1.engine = nil
     check(off == "ANIMALS_OFF" and typeOff == "TYPE_OFF" and noKey == "NOT_ALLOWED" and withKey == nil and running == "ENGINE_RUNNING",
         "抓取規則：收動物關閉、款式停用、車沒鑰匙 NOT_ALLOWED（同選單權限）、有鑰匙放行、引擎發動中")
+    -- another floor is out of reach: vanilla's right-click picks a vehicle by its outline on any floor, and a car
+    -- parked under the clicked one got packed (2026-10-27)
+    local above = at("above", 14, 30)
+    function above:getZ() return 4 end
+    check(Rules.vehicleWhyNot(at("beside", 14, 30), truck1) == nil and Rules.vehicleWhyNot(above, truck1) == "TOO_FAR"
+        and Rules.captureWhyNot(above, truck1, false, Steam) == "TOO_FAR",
+        "別的樓層的車搆不到：站在正上方 4 樓也收不了地面的車（選單、動作、伺服器、丟出抓取同一條）")
+    -- the floor is math.floor(z): a player on stairs (0.6) and a vehicle whose centre left its loaded chunks (0.2,
+    -- BaseVehicle.java:3379-3390) both stand on floor 0
+    local onStairs = at("stairs", 14, 30)
+    function onStairs:getZ() return 0.6 end
+    function truck1:getZ() return 0.2 end
+    local stairs = Rules.vehicleWhyNot(onStairs, truck1)
+    function truck1:getZ() return 0 end
+    check(stairs == nil, "樓層看取整：站在樓梯上（z 0.6）收得到同一層（z 0.2）的車")
 
     -- safehouse: the animal's square, the squares under the vehicle's body
     local none = Rules.animalWhyNot(stranger, cow2)
@@ -3366,7 +3381,9 @@ local function infoCases() -- 獨立函式：主程式的 local 已接近 200 �
         "TimedActions/ISPackVehicleAction", "TimedActions/ISPackAnimalAction", "TimedActions/ISReleaseSphereAction" }) do
         loaded[n] = true
     end
-    ISVehicleMenu, AnimalContextMenu = { FillMenuOutsideVehicle = function() end }, { doMenu = function() end }
+    local vanillaGot
+    ISVehicleMenu = { FillMenuOutsideVehicle = function(_, _, v) vanillaGot = v end }
+    AnimalContextMenu = { doMenu = function() end }
     loaded["MinidoracatPackThrow/Notify"] = nil
     require "MinidoracatPackThrow/Notify"
     loadfile(MEDIA .. "/client/MinidoracatPackThrow/Menu.lua")()
@@ -3391,6 +3408,43 @@ local function infoCases() -- 獨立函式：主程式的 local 已接近 200 �
         and option.name == "ContextMenu_MinidoracatPackThrow_Release(Hop2)" and widths == 1 and pooled.name == "Other"
         and Menu.releasePending == nil,
         "放出選單：有名字寫「放出：名字」，還沒有就只寫「放出」（從不用物品名）；紀錄到了就把開著的那一項改名、重算寬度；被別的選單拿去用的選項不動")
+
+    -- the outside vehicle menu: vanilla's right-click names the first vehicle whose outline holds the mouse point on any
+    -- floor (IsoObjectPicker.java:554-566); the one on the player's floor under the mouse goes in its place
+    print("Menu：右鍵挑到別層的車時，原版車外選項與收車換成玩家這層、滑鼠下的那台")
+    local packed
+    Menu.addPack = function(_, _, v) packed = v end
+    local function car(z, under)
+        return { getZ = function() return z end, isInBounds = function(_, x, y) return under and x == 7 and y == 9 end }
+    end
+    local below, above, aside = car(0, true), car(4, true), car(4, false)
+    local savedG = { cell = getCell, iso = IsoUtils, mx = getMouseXScaled, my = getMouseYScaled }
+    function me:getZ() return 4.5 end -- on stairs: floor 4, and the mouse maps onto floor 4
+    getMouseXScaled, getMouseYScaled = function() return 300 end, function() return 200 end
+    local function at4(x, y, z) return x == 300 and y == 200 and z == 4 end
+    IsoUtils = { XToIso = function(x, y, z) return at4(x, y, z) and 7 or 0 end,
+        YToIso = function(x, y, z) return at4(x, y, z) and 9 or 0 end }
+    local cars = { below, aside, above }
+    -- IsoCell.getVehicles() is a HashSet (IsoCell.java:159,2732): iterator() only, no get(i)
+    getCell = function() return { getVehicles = function() return { iterator = function()
+        local i = 0
+        return { hasNext = function() return i < #cars end, next = function() i = i + 1; return cars[i] end }
+    end } end } end
+    local function fill(v, test)
+        vanillaGot, packed = nil, nil
+        ISVehicleMenu.FillMenuOutsideVehicle(0, {}, v, test)
+        return vanillaGot, packed
+    end
+    local v1, p1 = fill(below)
+    local v2, p2 = fill(aside)
+    local v3, p3 = fill(below, true)
+    cars = { below, aside }
+    local v4, p4 = fill(below)
+    function me:getZ() return 0 end
+    getCell, IsoUtils, getMouseXScaled, getMouseYScaled = savedG.cell, savedG.iso, savedG.mx, savedG.my
+    check(v1 == above and p1 == above and v2 == aside and p2 == aside and v3 == above and p3 == nil,
+        "車外選單：原版挑到樓下的車時，原版選項與收車都換成玩家這層滑鼠下的車；原版挑的就在這層就不換；test 模式同樣換")
+    check(v4 == below and p4 == below, "這層滑鼠下沒有車：照原版挑的那台（收車選項由 Rules 回 TOO_FAR）")
     -- the strings
     local missing = {}
     for _, lang in ipairs({ "AR", "CH", "CN", "DE", "EN", "ES", "ES_CL", "ES_MX", "FR", "JP", "KO", "PL", "PT", "PTBR", "RU", "TR" }) do

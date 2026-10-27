@@ -177,8 +177,28 @@ function Menu.addPackAnimal(playerNum, context, animal)
     end, true)
 end
 
+-- Vanilla's right-click names the first vehicle whose outline holds the mouse point, on any floor
+-- (IsoObjectPicker.PickVehicle, IsoObjectPicker.java:554-566). A car landed on an upper floor can stand over another,
+-- so the vehicle on the player's floor under the mouse takes its place for vanilla's rows, Pack and the menu hooks of
+-- mods loaded before this one (they run inside this wrapper; one loaded after wraps it and still gets vanilla's pick).
+-- 2026-10-27: packing from the 4th floor took the car below. None there: vanilla's pick stays, Pack reads TOO_FAR.
+local function onPlayerFloor(playerNum, vehicle)
+    local player = getSpecificPlayer(playerNum)
+    local z = player and math.floor(player:getZ())
+    if not z or math.floor(vehicle:getZ()) == z then return vehicle end
+    local mx, my = getMouseXScaled(), getMouseYScaled()
+    local wx, wy = IsoUtils.XToIso(mx, my, z), IsoUtils.YToIso(mx, my, z)
+    local it = getCell():getVehicles():iterator() -- a HashSet (IsoCell.java:159,2732)
+    while it:hasNext() do
+        local v = it:next()
+        if math.floor(v:getZ()) == z and v:isInBounds(wx, wy) then return v end
+    end
+    return vehicle
+end
+
 local fillOutside = ISVehicleMenu.FillMenuOutsideVehicle
 function ISVehicleMenu.FillMenuOutsideVehicle(playerNum, context, vehicle, test)
+    vehicle = onPlayerFloor(playerNum, vehicle)
     local r = fillOutside(playerNum, context, vehicle, test)
     if test then return r end
     Menu.addPack(playerNum, context, vehicle)
