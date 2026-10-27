@@ -253,12 +253,16 @@ function Rules.captureChance(player, animal, typeId)
 end
 
 -- Why this animal cannot be packed by anyone right now, or nil: the menu (client), the timed action and the server
--- (Pack.packAnimal) ask the same. Any live animal in the world may be packed, wild or tame, young or grown; a wild one
+-- (Pack.packAnimal) ask the same, except that the menu does not check the floor (anyFloor, below). Any live animal in
+-- the world may be packed, wild or tame, young or grown; a wild one
 -- not while WildCaptureChance is 0 (WILD_OFF), else it may break free (Pack.packAnimal). Not in
 -- the world (isExistInTheWorld: carried, in a hutch or a trailer, IsoAnimal.java:2369) is ANIMAL_AWAY; a carcass or
 -- an animal on a butcher hook is NO_ANIMAL; a rope to a player or a post has to come off first (ROPE); its square in
--- someone else's safehouse is SAFEHOUSE. range: as in vehicleWhyNot.
-function Rules.animalWhyNot(player, animal, range)
+-- someone else's safehouse is SAFEHOUSE. range: as in vehicleWhyNot. Another floor is out of reach too, except for the
+-- menu (anyFloor): vanilla's right-click picks objects on every floor and lists the animals around the picked square
+-- (FBORenderObjectPicker.java:271-282, ISWorldObjectContextMenuLogic.java:587-599), and Menu.onPackAnimal walks there
+-- first (luautils.walkAdj); the timed action and the server check the floor.
+function Rules.animalWhyNot(player, animal, range, anyFloor)
     if not animal or animal:isDead() or animal:isOnHook() then return "NO_ANIMAL" end
     if not Rules.animalsOn() then return "ANIMALS_OFF" end
     if animal:isWild() and Rules.wildChance() <= 0 then return "WILD_OFF" end
@@ -266,7 +270,8 @@ function Rules.animalWhyNot(player, animal, range)
     local d = animal:getData()
     if d:getAttachedPlayer() or d:getAttachedTree() then return "ROPE" end
     local dx, dy, r = player:getX() - animal:getX(), player:getY() - animal:getY(), range or M.PACK_RANGE
-    if dx * dx + dy * dy > r * r then return "TOO_FAR" end
+    local otherFloor = not anyFloor and math.floor(animal:getZ()) ~= math.floor(player:getZ())
+    if otherFloor or dx * dx + dy * dy > r * r then return "TOO_FAR" end
     local sq = animal:getSquare()
     if not sq then return nil end
     return Rules.safehouseWhyNot(player, { x1 = sq:getX(), y1 = sq:getY(), x2 = sq:getX(), y2 = sq:getY() }, sq:getZ())
@@ -285,7 +290,8 @@ end
 
 -- Everything the server checks before a thrown empty capsule or sphere of type t takes this animal (isAnimal) or
 -- vehicle, or nil (spec B): a sphere takes animals, a capsule vehicles (WRONG_ITEM first: the cursor's red frame says
--- which one to use); then the menu's rules for the same thing (a vehicle: its state and who may pack it), with
+-- which one to use); then the timed action's and the server's rules for the same thing (a vehicle: its state and who
+-- may pack it; an animal on another floor is out of reach), with
 -- CAPTURE_REACH for the distance, and the type switched on. The capsule is the thrown one.
 function Rules.captureWhyNot(player, thing, isAnimal, t)
     if t and t.sphere ~= (isAnimal == true) then return "WRONG_ITEM" end

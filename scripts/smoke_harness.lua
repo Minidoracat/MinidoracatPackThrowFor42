@@ -2334,6 +2334,7 @@ local function animals() -- 獨立函式：主程式的 local 已接近 200 個�
         function a:isExistInTheWorld() return o.away ~= true end
         function a:getX() return o.x or 101.5 end
         function a:getY() return 201.5 end
+        function a:getZ() return 0 end
         function a:getSquare() return o.square end
         function a:getOnlineID() return 31 end
         function a:remove()
@@ -2711,6 +2712,7 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
         local a = { x = x, y = y }
         function a:getX() return self.x + 0.5 end
         function a:getY() return self.y + 0.5 end
+        function a:getZ() return self.z or 0 end
         function a:getSquare() return sq(self.x, self.y) end
         function a:getOnlineID() return oid end
         function a:getAnimalID() return 9000 + oid end
@@ -2804,6 +2806,17 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
     local stairs = Rules.vehicleWhyNot(onStairs, truck1)
     function truck1:getZ() return 0 end
     check(stairs == nil, "樓層看取整：站在樓梯上（z 0.6）收得到同一層（z 0.2）的車")
+    -- animals too, for the timed action, the server and a capture; the menu (anyFloor) lists what vanilla's right-click
+    -- found, maybe an animal a floor below, and walks there first (review, 2026-10-27)
+    local upstairs = at("upstairs", 12, 30)
+    function upstairs:getZ() return 1 end
+    cow.z = 0.3
+    local sameFloor = Rules.animalWhyNot(onStairs, cow)
+    cow.z = nil
+    check(Rules.animalWhyNot(upstairs, cow) == "TOO_FAR" and Rules.packAnimalWhyNot(upstairs, cow, Ball) == "TOO_FAR"
+        and Rules.captureWhyNot(upstairs, cow, true, Ball) == "TOO_FAR" and sameFloor == nil
+        and Rules.animalWhyNot(upstairs, cow, nil, true) == nil,
+        "別的樓層的動物：動作、伺服器、丟出抓取都搆不到，選單照列（先走過去）；站在樓梯上（z 0.6）抓同一層（z 0.3）的照常")
 
     -- safehouse: the animal's square, the squares under the vehicle's body
     local none = Rules.animalWhyNot(stranger, cow2)
@@ -3017,6 +3030,7 @@ local function sphereCases() -- 獨立函式：主程式的 local 已接近 200 
         local a = { x = o.x or 12, y = o.y or 10 }
         function a:getX() return self.x + 0.5 end
         function a:getY() return self.y + 0.5 end
+        function a:getZ() return 0 end
         function a:getSquare() return sq(self.x, self.y) end
         function a:isWild() return o.wild == true end
         function a:getHealth() return o.health or 1 end
@@ -3408,6 +3422,21 @@ local function infoCases() -- 獨立函式：主程式的 local 已接近 200 �
         and option.name == "ContextMenu_MinidoracatPackThrow_Release(Hop2)" and widths == 1 and pooled.name == "Other"
         and Menu.releasePending == nil,
         "放出選單：有名字寫「放出：名字」，還沒有就只寫「放出」（從不用物品名）；紀錄到了就把開著的那一項改名、重算寬度；被別的選單拿去用的選項不動")
+
+    -- the animal menu lists what vanilla's right-click found, maybe an animal a floor below (FBORenderObjectPicker
+    -- collects every floor): catching it stays available, onPackAnimal walks there first (review, 2026-10-27)
+    local downstairs = { getX = function() return me:getX() + 2 end, getY = function() return me:getY() end,
+        getZ = function() return 0 end, isDead = function() return false end, isOnHook = function() return false end,
+        isWild = function() return false end, isExistInTheWorld = function() return true end,
+        getSquare = function() return nil end,
+        getData = function() return { getAttachedPlayer = function() end, getAttachedTree = function() end } end }
+    function me:getZ() return 1 end
+    local row, reason = M.Notify.row, M.Notify.reason -- a refusal row draws with getCore(): plain text here
+    M.Notify.row, M.Notify.reason = function(_, text) return tostring(text) end, function(code) return tostring(code) end
+    local menuOk = Menu.packAnimalTooltip(me, downstairs, M.TYPE_BY_ID.SphereBasic, false)
+    M.Notify.row, M.Notify.reason = row, reason
+    function me:getZ() return 0 end
+    check(menuOk == true, "動物選單：原版列出樓下的動物時，「收進帕魯球」照樣能點（點了先走過去；動作與伺服器才比樓層）")
 
     -- the outside vehicle menu: vanilla's right-click names the first vehicle whose outline holds the mouse point on any
     -- floor (IsoObjectPicker.java:554-566); the one on the player's floor under the mouse goes in its place

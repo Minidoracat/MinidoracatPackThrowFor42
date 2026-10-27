@@ -62,9 +62,10 @@ end
 
 -- Tooltip rows for catching this animal with a sphere of type t: catching animals switched off, the sphere, then the
 -- animal's own state (held, tied, gone), and for a wild one the chance with this tier (Notify.chanceRows). Anyone may
--- catch an animal. Returns ok, rich text.
+-- catch an animal. Any floor: vanilla may list an animal on the floor below, and onPackAnimal walks there first
+-- (Rules.animalWhyNot). Returns ok, rich text.
 function Menu.packAnimalTooltip(player, animal, t, single)
-    local why = Rules.animalWhyNot(player, animal)
+    local why = Rules.animalWhyNot(player, animal, nil, true)
     local text = why == "ANIMALS_OFF" and Notify.row(false, Notify.reason(why)) or ""
     local capsule, row = capsuleRow(t, single, true)
     text = text .. row
