@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "空的%1回到你的背包。",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "沒有放出動物",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "丟出收納",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "修正：收車可能收走正上方或正下方的另一台車。那顆膠囊在那台車原本停的地方。"
+    "IGUI_MinidoracatPackThrow_WhatsNew": "插在點火孔上的鑰匙現在跟著車收進膠囊，展開後還插在車上，不會再多一把在背包裡。"
 }

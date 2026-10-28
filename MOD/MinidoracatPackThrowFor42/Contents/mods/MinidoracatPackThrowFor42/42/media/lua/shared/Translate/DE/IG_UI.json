@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "Eine leere %1 ist wieder in deinem Inventar.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "Das Tier wurde nicht freigelassen",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "Behoben: Einpacken traf manchmal ein Fahrzeug einer anderen Etage. Dessen Kapsel liegt, wo es stand."
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Ein Schlüssel in der Zündung bleibt jetzt beim Fahrzeug und steckt nach dem Entpacken weiter."
 }

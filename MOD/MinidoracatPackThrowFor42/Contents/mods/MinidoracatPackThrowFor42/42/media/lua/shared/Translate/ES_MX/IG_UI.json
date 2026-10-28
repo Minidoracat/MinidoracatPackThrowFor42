@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "Una %1 vacía ha vuelto a tu inventario.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "El animal no se liberó",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "Corregido: guardar podía tomar un vehículo del piso de arriba o de abajo. Su cápsula está donde estaba."
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Una llave en el contacto ahora se guarda con el vehículo y sigue en el contacto al desplegarlo."
 }

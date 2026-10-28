@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "空の%1がインベントリに戻りました。",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "動物を出せませんでした",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "投げて収納",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "修正：上下の階の別の車両を収納することがありました。そのカプセルは、その車両があった場所にあります。"
+    "IGUI_MinidoracatPackThrow_WhatsNew": "イグニッションに挿した鍵は車両と一緒にカプセルに入り、展開後も挿さったままになりました。"
 }

@@ -26,7 +26,7 @@ do
     if UI and UI.API_REVISION >= 24 and UI.CAPABILITIES.whatsNew and UI.WhatsNew then
         UI.WhatsNew.register({
             modId = "MinidoracatPackThrowFor42",
-            since = "0.5.3",
+            since = "0.5.4",
             name = "UI_MinidoracatPackThrow_OptionsTitle",
             text = "IGUI_MinidoracatPackThrow_WhatsNew",
         })

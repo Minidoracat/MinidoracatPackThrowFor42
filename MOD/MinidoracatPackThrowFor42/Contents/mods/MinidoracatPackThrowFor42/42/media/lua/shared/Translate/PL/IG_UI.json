@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "Pusta %1 wróciła do twojego ekwipunku.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "Zwierzę nie zostało wypuszczone",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "Naprawiono: pakowanie mogło zabrać pojazd z piętra wyżej lub niżej. Jego kapsuła leży tam, gdzie stał."
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Kluczyk w stacyjce trafia teraz do kapsuły razem z pojazdem i po rozpakowaniu nadal tkwi w stacyjce."
 }
