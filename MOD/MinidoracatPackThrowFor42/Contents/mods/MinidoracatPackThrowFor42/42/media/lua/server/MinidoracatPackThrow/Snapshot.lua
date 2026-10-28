@@ -69,6 +69,7 @@ end
 
 -- Plain table of everything we restore. snap.skipped lists modData paths the engine would not persist either.
 function Snapshot.capture(vehicle)
+    local key = vehicle:getCurrentKey()
     local snap = {
         v = Snapshot.VERSION,
         script = vehicle:getScriptName(),
@@ -79,6 +80,10 @@ function Snapshot.capture(vehicle)
         blood = {},
         engine = { vehicle:getEngineQuality(), vehicle:getEngineLoudness(), vehicle:getEnginePower() },
         keyId = vehicle:getKeyId(),
+        -- a key in the ignition goes with the car (Pack leaves it there); Snapshot.restore puts a new one in, with
+        -- the name the player gave it, if any (the client sets that name: capped, vanilla's rename box takes 28)
+        ignition = key ~= nil,
+        keyName = key and key:isCustomName() and string.sub(key:getName(), 1, 64) or nil,
         hotwired = vehicle:isHotwired(),
         alarmed = vehicle:isAlarmed(),
         headlights = vehicle:getHeadlightsOn(),
@@ -300,6 +305,20 @@ function Snapshot.restore(vehicle, snap, opts)
     vehicle:setEngineFeature(snap.engine[1], snap.engine[2], snap.engine[3])
     vehicle:setHotwired(snap.hotwired == true)
     vehicle:setAlarmed(snap.alarmed == true)
+    -- the key the car had in its ignition: a new one with the same keyId and colour (createVehicleKey, named like vanilla
+    -- unless the player renamed it). The first full update carries it (BaseVehicle.save writes the ignition key item).
+    if snap.ignition then
+        -- only another MOD's spawn key can be there: made before setKeyId above, it fits nothing
+        local stray = vehicle:getCurrentKey()
+        local box = stray and stray:getContainer()
+        if box then box:Remove(stray) end
+        local key = vehicle:createVehicleKey()
+        if key and type(snap.keyName) == "string" then
+            key:setName(snap.keyName)
+            key:setCustomName(true) -- after setName: it copies the name into modData (InventoryItem.java:3256-3258)
+        end
+        vehicle:setCurrentKey(key)
+    end
     -- before the parts so install.complete sees the original data, again after to undo what it wrote
     -- (damnlib migrates/saves vehicle modData from its part hooks)
     replaceModData(vehicle:getModData(), snap.modData)

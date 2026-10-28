@@ -93,7 +93,7 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 [list]
 [*] [b]Time[/b]: about 10 seconds.
 [*] [b]The server checks again[/b]: permission, passengers and towing; it only packs when everything passes, saves the vehicle and its cargo first and removes the vehicle from the world last.
-[*] [b]Key[/b]: a key left in the ignition moves to your inventory.
+[*] [b]Key[/b]: a key left in the ignition goes into the capsule with the vehicle and is back in the ignition after unpacking (a renamed key keeps its name); take it with you as usual if you don't want others to drive off. Capsules packed by older versions carry no key: it went to the packer's inventory back then.
 [*] [b]Afterwards[/b]: the empty capsule you used becomes a loaded capsule of the same type and drops where the vehicle stood.
 [*] [b]Capsule name[/b]: "Type: vehicle", for example "Steam Capsule: Chevalier D6"; every player sees it in their own game language once the inventory or loot window lists it.
 [*] [b]Effects[/b]: nearby players see that type's smoke and flash and hear its sound.
@@ -103,7 +103,7 @@ The Pal Sphere names and looks are a tribute to Palworld; this mod is not affili
 [*] Vehicle type, paint
 [*] Every part and its condition (including mods and removed parts)
 [*] Fuel, tire pressure, battery
-[*] Doors, windows and locks, the key ID
+[*] Doors, windows and locks, the key ID, a key left in the ignition
 [*] The cargo in every container on the vehicle
 [/list]
 Vanilla and modded vehicles such as KI5's work the same way.

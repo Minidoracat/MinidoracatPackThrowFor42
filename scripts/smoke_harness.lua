@@ -644,7 +644,7 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     function Part:getDoor() return nil end
     function Part:getWindow() return nil end
     function Part:getLight() return nil end
-    for _, f in ipairs({ "setKeyId", "setSkinIndex", "setColorHSV", "setRust", "setBloodIntensity", "setEngineFeature",
+    for _, f in ipairs({ "setSkinIndex", "setColorHSV", "setRust", "setBloodIntensity", "setEngineFeature",
         "setHotwired", "setAlarmed", "setHeadlightsOn", "updatePartStats", "updateBulletStats", "doDamageOverlay", "exit" }) do
         Car[f] = function() end
     end
@@ -659,7 +659,7 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     function Car:getEngineQuality() return 50 end
     function Car:getEngineLoudness() return 40 end
     function Car:getEnginePower() return 60 end
-    function Car:getKeyId() return 7 end
+    function Car:getKeyId() return self.keyId or 7 end
     function Car:isHotwired() return false end
     function Car:isAlarmed() return false end
     function Car:getHeadlightsOn() return false end
@@ -669,6 +669,32 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     function Car:getPartByIndex(i) return self.list[i + 1] end
     function Car:getPartById(id) return self.byId[id] end
     function Car:getSqlId() return 1 end -- placed: VehiclesDB2 numbered it
+    -- the ignition (BaseVehicle.ignitionSwitch): getCurrentKey reads its first item, setCurrentKey adds one (nil adds
+    -- nothing), BaseVehicle.java:9673-9680; createVehicleKey names it after the vehicle (BaseVehicle.java:1145-1157)
+    local Key = {}
+    Key.__index = Key
+    local function key(keyId, name, custom) return setmetatable({ keyId = keyId, name = name, custom = custom == true }, Key) end
+    function Key:getKeyId() return self.keyId end
+    function Key:getName() return self.name end
+    function Key:setName(n) self.name = n end
+    function Key:isCustomName() return self.custom end
+    function Key:setCustomName(b) self.custom = b end
+    function Key:getContainer() return self.box end
+    local function ignition(c)
+        c.ign = c.ign or { list = {}, Remove = function(box, k)
+            for i, x in ipairs(box.list) do if x == k then table.remove(box.list, i); k.box = nil; return end end
+        end }
+        return c.ign
+    end
+    function Car:setKeyId(k) self.keyId = k end
+    function Car:getCurrentKey() return ignition(self).list[1] end
+    function Car:setCurrentKey(k)
+        if not k then return end
+        local box = ignition(self)
+        box.list[#box.list + 1] = k
+        k.box = box
+    end
+    function Car:createVehicleKey() return key(self.keyId, "Car Key - " .. self:getScriptName()) end
     -- the tsarslib Tuning2 hooks, the parts that matter here (ATATuning2.lua): install drops the item of a slot whose
     -- tuning2 names no model (ModelByModData :451-452); a guard parks the condition of the part it protects in that
     -- part's modData and shows 100 (InstallComplete.Tuning :571-600); uninstall gives the parked condition back
@@ -729,6 +755,36 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
         and light.md.tuning2.protectionRequireUninstalled.Bullbar == true,
         "排在護槓前面、被它保護的大燈：狀況與停著的真實狀況照快照（護槓的 hook 後跑也蓋不掉）")
     check(skirts.item == nil and next(skirts.md.tuning2) == nil, "快照裡空著的改裝槽維持空的（新車隨機抽到的拿掉）")
+
+    print("Snapshot：點火開關上的鑰匙跟著車走（正式服 2026-10-28：收車時鑰匙退回背包，被當成多的刪掉）")
+    local named, plain, none, long = car({}), car({}), car({}), car({})
+    named.keyId, plain.keyId, long.keyId = 42, 43, 44
+    named:setCurrentKey(key(42, "My truck", true))
+    plain:setCurrentKey(key(43, "Car Key - Base.PickUpTruck"))
+    long:setCurrentKey(key(44, string.rep("x", 200), true))
+    local sNamed, sPlain, sNone = M.Snapshot.capture(named), M.Snapshot.capture(plain), M.Snapshot.capture(none)
+    check(sNamed.ignition == true and sNamed.keyName == "My truck" and sPlain.ignition == true and sPlain.keyName == nil
+        and sNone.ignition == false and sNone.keyName == nil and #M.Snapshot.capture(long).keyName == 64,
+        "收車：記下點火開關上有沒有鑰匙，玩家改過名的另記名稱（最多 64 字）")
+    local function spawnFrom(snap, stray)
+        local f = car({})
+        if stray then f:setCurrentKey(stray) end
+        addVehicleDebug = function() return f end
+        return M.Unpack.spawn(snap, {}, "N")
+    end
+    local old = M.Json.copy(sPlain)
+    old.ignition = nil -- packed before this change: the key went to the packer then
+    local vNamed, vPlain, vNone, vOld = spawnFrom(sNamed), spawnFrom(sPlain), spawnFrom(sNone), spawnFrom(old)
+    local vStray = spawnFrom(sPlain, key(999, "Car Key - random"))
+    local function only(v) local l = ignition(v).list; return #l == 1 and l[1] or nil end
+    local kNamed, kPlain, kStray = only(vNamed), only(vPlain), only(vStray)
+    check(kNamed and kNamed.keyId == 42 and kNamed.name == "My truck" and kNamed.custom == true,
+        "展開：新車點火開關上有一把同 keyId 的鑰匙，名稱照玩家改的")
+    check(kPlain and kPlain.keyId == 43 and kPlain.name == "Car Key - Base.PickUpTruck" and not kPlain.custom,
+        "沒改過名的照原版命名")
+    check(kStray and kStray.keyId == 43, "新車點火開關已有別的 MOD 放的鑰匙（keyId 不對）：換成這台車的，只留一把")
+    check(vNone:getCurrentKey() == nil and vOld:getCurrentKey() == nil,
+        "收車時點火開關是空的、舊紀錄（沒有 ignition）：新車點火開關也是空的")
     addVehicleDebug, IsoDirections, VehicleUtils, instanceItem = saved.add, saved.dirs, saved.utils, saved.inst
 end)() end
 
@@ -1902,6 +1958,15 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     check(back.home == 3 and back.other == 0 and back.ground == 0 and #light.store.list == 0
         and bed[#bed - 1] == c.water and bed[#bed] == c.bag and box[1] == c.lighter,
         "展開：貨物倉的貨物回到原本的車上位置（車斗：水瓶、背包；置物箱：打火機），貨物倉清空")
+
+    quiet = true
+    local keyed, ignition = truck(false), newContainer(nil)
+    local carKey = ignition:AddItem(newItem("Base.CarKey"))
+    function keyed:getCurrentKey() return ignition.list[1] end
+    local keyRes = Pack.pack(packer, keyed, {})
+    quiet = false
+    check(keyRes.ok and keyed.removed and carKey.container == ignition and packer.inv:getCountTypeRecurse("Base.CarKey") == 0,
+        "收車：點火開關上的鑰匙留在車上、跟著車走，不放進收車的人背包")
 
     -- Guard: the store counts as inside (no CARGO_LOCK; no CARGO_TAKEN with taking out allowed); clearing lists it
     quiet = true

@@ -64,14 +64,7 @@ function Pack.pack(player, vehicle, opts)
     Store.schedule(capsuleId)
     local empty = useUp(player, opts.empty)
     local moved = Snapshot.packCargo(vehicle, capsule, snap)
-    local key = vehicle:getCurrentKey()
-    if key then
-        local inv = player:getInventory()
-        inv:AddItem(key) -- also removes it from the ignition container
-        sendAddItemToContainer(inv, key)
-        vehicle:setCurrentKey(nil)
-        vehicle:setKeysInIgnition(false)
-    end
+    -- a key in the ignition stays there and goes with the car (snap.ignition): Snapshot.restore puts a new one in
     sq:AddWorldInventoryItem(capsule, 0.5, 0.5, 0) -- transmits the whole item (contents included) to clients
     vehicle:permanentlyRemove()
     -- capsuleId: the empty capsule used, which a capture threw; its flight ends with this smoke (client Effects.endFlight)
@@ -79,7 +72,7 @@ function Pack.pack(player, vehicle, opts)
     writeLine(M.LOG_PREFIX .. "PACKED capsule=" .. capsuleId .. " state=PACKED by=" .. snap.packedBy
         .. " x=" .. x .. " y=" .. y .. " z=" .. z .. " car=" .. tostring(car) .. " script=" .. tostring(snap.script)
         .. " type=" .. t.id
-        .. " cargo=" .. moved .. " light=" .. tostring(snap.light == true) .. " key=" .. tostring(key ~= nil)
+        .. " cargo=" .. moved .. " light=" .. tostring(snap.light == true) .. " key=" .. tostring(snap.ignition)
         .. " empty=" .. tostring(empty)
         .. " skipped=" .. (#snap.skipped > 0 and table.concat(snap.skipped, ",") or "-"))
     return { ok = true, capsuleId = capsuleId, x = x, y = y, z = z, cargo = moved,
