@@ -913,7 +913,9 @@ water.equipped = true
 Guard.pass(owner)
 Guard.pass(owner)
 local missing = 0
-for _, e in ipairs(Store.read(cap.id).history) do if e.why == "missing" then missing = missing + 1 end end
+for _, e in ipairs(Store.read(cap.id).history) do
+    if e.why == "missing" and e.items:find("#equipped#", 1, true) then missing = missing + 1 end
+end
 quiet = false
 for _, cr in ipairs(clearResults) do check(cr[1], cr[2]) end
 check(unpackRes.why == "CLEARED" and staleGone, "展開時遇到已落盤的 UNPACKED：拒絕並清空（CLEARED）")
@@ -922,7 +924,7 @@ check(bag.container == cap.inv and pencil.container == bag.inv and topLevel("Bas
 local lockEv = lockH[#lockH]
 check(lockEv.ev == "CARGO_LOCK" and lockEv.why == "returned" and lockEv.items:find("Base.WaterBottle", 1, true) ~= nil
     and lockEv.items:find("Base.Bag_Schoolbag", 1, true) ~= nil, "記 CARGO_LOCK returned（水瓶、背包）：" .. tostring(lockEv.items))
-check(water.container == owner.inv and missing == 1, "裝備中的物品不硬拿，只記一次 missing")
+check(water.container == owner.inv and missing == 1, "裝備中的物品不硬拿，只記一次 missing（#equipped#）")
 
 do -- 拿出模式（AllowCargoTakeOut）：主程式的 local 已接近 200 個上限，放進函式
     (function()
@@ -1037,10 +1039,25 @@ do -- 膠囊放進從它裡面拿出來的書包：主程式的 local 已接近 
         local h2 = Store.read(cap.id).history
         local bagBack = bag.container == cap.inv and h2[#h2].why == "returned"
         owner.inv:Remove(cap)
+        -- 兩層：膠囊放進另一個袋子，那個袋子再放進拿出來的書包（holds 要往上走到書包）
+        local cap2, _, bag2 = packedCapsule("PACKED", true)
+        Guard.pass(owner)
+        cap2.inv:Remove(bag2)
+        owner.inv:AddItem(bag2)
+        local pouch = newItem("Base.Bag_Schoolbag", true)
+        bag2.inv:AddItem(pouch)
+        owner.inv:Remove(cap2)
+        pouch.inv:AddItem(cap2)
+        Guard.pass(owner)
+        local h3 = Store.read(cap2.id).history
+        local deep = bag2.container == owner.inv and pouch.container == bag2.inv and cap2.container == pouch.inv
+            and h3[#h3].why == "missing" and h3[#h3].items:find("#holds#", 1, true) ~= nil
+        owner.inv:Remove(bag2)
         quiet = false
         check(held, "書包裝著膠囊：書包、膠囊都留在原處，記 missing（#holds#）")
         check(pencilBack, "書包裡的鉛筆照常放回膠囊")
         check(bagBack, "膠囊拿出書包後，下一次全查（FULL_MS）把書包放回膠囊")
+        check(deep, "膠囊在書包裡的另一個袋子裡：書包、袋子、膠囊都留在原處，記 missing（#holds#）")
     end)()
 end
 
