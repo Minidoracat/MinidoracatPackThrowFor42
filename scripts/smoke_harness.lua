@@ -911,6 +911,7 @@ cap.inv:Remove(water)
 owner.inv:AddItem(water)
 water.equipped = true
 Guard.pass(owner)
+nowMs = nowMs + Guard.FULL_MS -- 第二次是全查：只記一次 missing 要靠去重，不是靠沒重查
 Guard.pass(owner)
 local missing = 0
 for _, e in ipairs(Store.read(cap.id).history) do
