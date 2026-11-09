@@ -58,7 +58,15 @@ local function newContainer(holder)
     function c:getItems() return javaList(self.list) end
     function c:getContainingItem() return self.holder end
     function c:isEmpty() return #self.list == 0 end
-    function c:AddItem(it) self.list[#self.list + 1] = it; it.container = self; return it end
+    -- 42.22 拒收裝著這個容器的物品（ItemContainer.chainContainsContainingItem），回 nil、不放進去
+    function c:AddItem(it)
+        local h = self.holder
+        while h do
+            if h == it then return nil end
+            h = h.container and h.container.holder
+        end
+        self.list[#self.list + 1] = it; it.container = self; return it
+    end
     function c:Remove(it)
         for i, x in ipairs(self.list) do
             if x == it then table.remove(self.list, i); it.container = nil; return end
@@ -1007,6 +1015,35 @@ do -- 指紋快取：主程式的 local 已接近 200 個上限，放進函式
     end)()
 end
 
+do -- 膠囊放進從它裡面拿出來的書包：主程式的 local 已接近 200 個上限，放進函式
+    (function()
+        print("Guard：拿出來的書包裝著膠囊時不放回（42.22 的 AddItem 拒收，先 Remove 會兩個一起不見）；膠囊拿出書包後照常放回")
+        quiet = true
+        local cap, _, bag, pencil = packedCapsule("PACKED", true)
+        Guard.pass(owner)
+        cap.inv:Remove(bag)
+        owner.inv:AddItem(bag)
+        owner.inv:Remove(cap)
+        bag.inv:AddItem(cap)
+        Guard.pass(owner)
+        local h = Store.read(cap.id).history
+        local held = bag.container == owner.inv and cap.container == bag.inv and h[#h].why == "missing"
+            and h[#h].items:find("#holds#", 1, true) ~= nil
+        local pencilBack = pencil.container == cap.inv
+        bag.inv:Remove(cap)
+        owner.inv:AddItem(cap)
+        nowMs = nowMs + Guard.FULL_MS -- 膠囊裡的件數重量沒變：等下一次全查
+        Guard.pass(owner)
+        local h2 = Store.read(cap.id).history
+        local bagBack = bag.container == cap.inv and h2[#h2].why == "returned"
+        owner.inv:Remove(cap)
+        quiet = false
+        check(held, "書包裝著膠囊：書包、膠囊都留在原處，記 missing（#holds#）")
+        check(pencilBack, "書包裡的鉛筆照常放回膠囊")
+        check(bagBack, "膠囊拿出書包後，下一次全查（FULL_MS）把書包放回膠囊")
+    end)()
+end
+
 do -- 回溯判斷：主程式的 local 已接近 200 個上限，放進函式
     (function()
         print("Guard.stale：世界存檔比展開舊（沒有 ModData 標記）時，車在才清空，車不在交給管理員")
@@ -1502,7 +1539,9 @@ do -- 桶檔、保留天數、最後看到：主程式的 local 已接近 200 �
         print("Store.dir：單機一個存檔一個資料夾（SP_<模式>_<存檔>），名稱裡的特殊字元換成底線")
         local realIsServer, realGetCore, realGetWorld = isServer, getCore, getWorld
         isServer = function() return false end
-        getCore = function() return { getGameMode = function() return "Apocalypse" end } end
+        -- 42.22: getGameMode() returns a GameMode object; tostring gives its id ("Apocalypse"), .. on it throws
+        local gameMode = setmetatable({}, { __tostring = function() return "Apocalypse" end })
+        getCore = function() return { getGameMode = function() return gameMode end } end
         getWorld = function() return { getWorld = function() return "10-10-2026_12-00/x" end } end
         Store._resetForTests()
         local spDir = Store.dir()

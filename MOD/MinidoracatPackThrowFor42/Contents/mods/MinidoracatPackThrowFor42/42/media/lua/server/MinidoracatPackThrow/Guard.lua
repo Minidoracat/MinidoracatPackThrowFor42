@@ -104,10 +104,23 @@ local function idsIn(list, set)
     return set
 end
 
+-- True when `item` holds the capsule (any depth), as when the capsule went into a bag taken out of it. Putting such an
+-- item back would nest the capsule inside itself: 42.22 refuses that AddItem (ItemContainer.chainContainsContainingItem)
+-- after the Remove below has run, so both would vanish; 42.21 made the loop.
+local function holds(item, capsule)
+    local c = capsule:getContainer()
+    while c do
+        local holder = c:getContainingItem()
+        if holder == item then return true end
+        c = holder and holder:getContainer()
+    end
+    return false
+end
+
 local reported = {} -- "capsuleId:itemId" -> true: cargo that left and could not be put back, logged once per run
 
--- Puts sealed cargo the player took out back into the capsule (top level). Equipped, worn or attached items and
--- items the player does not carry are only logged.
+-- Puts sealed cargo the player took out back into the capsule (top level). Equipped, worn or attached items, items
+-- holding the capsule and items the player does not carry are only logged.
 local function lock(player, capsule, capsuleId, sealed)
     if not sealed or #sealed == 0 then return end
     local here = idsIn(M.cargoItems(capsule), {})
@@ -116,9 +129,11 @@ local function lock(player, capsule, capsuleId, sealed)
     for _, itemId in ipairs(sealed) do
         if not here[itemId] then
             local item = inv:getItemWithIDRecursiv(itemId)
+            local stuck = item and ((player:isEquipped(item) or player:isAttachedItem(item)) and "#equipped#"
+                or holds(item, capsule) and "#holds#")
             if item and M.inCapsule(item) then
                 -- already back: it came inside a bag that was put back above (sealed lists bags before contents)
-            elseif item and not (player:isEquipped(item) or player:isAttachedItem(item)) then
+            elseif item and not stuck then
                 local from = item:getContainer()
                 from:Remove(item)
                 sendRemoveItemFromContainer(from, item)
@@ -128,7 +143,7 @@ local function lock(player, capsule, capsuleId, sealed)
                 idsIn({ item }, here)
             elseif not reported[capsuleId .. ":" .. itemId] then
                 reported[capsuleId .. ":" .. itemId] = true
-                gone[#gone + 1] = (item and (item:getFullType() .. "#equipped#") or "#") .. itemId
+                gone[#gone + 1] = (item and (item:getFullType() .. stuck) or "#") .. itemId
             end
         end
     end

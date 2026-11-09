@@ -1,9 +1,11 @@
 -- Pack & Throw: what players do (pack, throw, press, release a Pal Sphere), server side. SP runs the same
 -- functions locally.
 -- MP timed actions run complete() on the server only, rebuilt from the new() arguments the client sent
--- (NetTimedAction.java:142-170), so `character` can name anyone. Identity comes from OnClientCommand (the server
--- maps the connection to the player): the client sends an intent when it queues the action, and complete() only
--- goes ahead when that same player sent a matching intent (same scheme as VehicleManager's prepareAction).
+-- (NetTimedAction.java:142-170). 42.21 let `character` name anyone; 42.22 rejects an action whose character is not
+-- the sender (NetTimedActionPacket.processServer). The intent is the server's own check either way: identity comes
+-- from OnClientCommand (the server maps the connection to the player), the client sends an intent when it queues
+-- the action, and complete() only goes ahead when that same player sent a matching intent (same scheme as
+-- VehicleManager's prepareAction). The intent also carries what the menu picked (capsule type, capture target).
 if isClient() then return end
 require "MinidoracatPackThrow/Core"
 require "MinidoracatPackThrow/Rules"
