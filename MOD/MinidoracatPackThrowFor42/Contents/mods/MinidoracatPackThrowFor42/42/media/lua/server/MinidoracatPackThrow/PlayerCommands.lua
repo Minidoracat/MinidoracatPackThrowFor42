@@ -1,10 +1,10 @@
 -- Pack & Throw: what players do (pack, throw, press, release a Pal Sphere), server side. SP runs the same
 -- functions locally.
 -- MP timed actions run complete() on the server only, rebuilt from the new() arguments the client sent
--- (NetTimedAction.java:142-170), so `character` can name anyone. 42.22 also rejects an action whose character is
--- not the player the packet names (NetTimedActionPacket.processServer), but the client writes that name itself: with
--- no player index the server takes any online player by id (PlayerID.parsePlayer). Identity comes only from
--- OnClientCommand (the server maps the connection to the player): the client sends an intent when it queues the
+-- (NetTimedAction.java:142-170). 42.21 let `character` name anyone. 42.22 takes the action's player from the sending
+-- connection's local player index (Action's ConnectionPlayer) and rejects an action whose `character` is someone
+-- else (NetTimedActionPacket.processServer). The intent stays the server's own check: identity comes from
+-- OnClientCommand (the server maps the connection to the player), the client sends an intent when it queues the
 -- action, and complete() only goes ahead when that same player sent a matching intent (same scheme as
 -- VehicleManager's prepareAction). The intent also carries what the menu picked (capsule type, capture target).
 if isClient() then return end
