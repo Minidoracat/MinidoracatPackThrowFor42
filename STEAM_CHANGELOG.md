@@ -1,7 +1,19 @@
-[h1]Minidoracat Pack & Throw for B42 42.21.0-0.5.4[/h1]
-[i]2026-10-29[/i]
+[h1]Minidoracat Pack & Throw for B42 42.22.2-0.5.5[/h1]
+[i]2026-11-10[/i]
+
+[b]English summary[/b]
+[list]
+[*] Supports Project Zomboid 42.22.2. Packing and unpacking cars (mods, condition, cargo, the key in the ignition), throwing capsules and Press the Button, catching and releasing animals with Pal Spheres, crafting, loot and the admin panel were tested again on 42.22.2, in single player and multiplayer, with Vehicle Manager and Minidoracat Economy too.
+[*] Hardened server-side checks. Normal play is not affected.
+[*] Nothing to set up after updating. Capsules and Pal Spheres you already filled keep working.
+[/list]
 
 [h3]🔄 變更[/h3]
 [list]
-[*] [b]收車時插在車上的鑰匙會跟著車走[/b]：之前鑰匙插在點火開關上時收車，鑰匙會退回收車的人背包（不放回鑰匙圈），展開後的車點火開關是空的；背包裡多出一把同名的車鑰匙，很容易被當成多的丟掉或刪掉，之後那台車就只能接線發動。現在鑰匙跟著車收進膠囊，展開後插在車上，跟收之前一樣坐上去就能發動；鑰匙改過名的，名稱也照舊。不想被別人開走，就照平常一樣把鑰匙拔下來帶走。膠囊賣給別人時，鑰匙也跟著到買家手上。更新前收好的膠囊不受影響：那些車的鑰匙當時已經給了收車的人。
+[*] 支援 Project Zomboid 42.22.2：在 42.22.2 上重新驗過收車與展開（含改裝與車況、貨物、不算貨物重量的設定、插在車上的鑰匙）、丟出與按下按鈕、帕魯球抓動物與放出、丟出抓取、製作、戰利品、管理面板，以及和車輛管理、經濟系統一起用的情況。單人與多人都驗過，更新後不用做任何設定。
+[/list]
+
+[h3]🔧 修正[/h3]
+[list]
+[*] [b]強化伺服器端驗證[/b]：一般遊玩不受影響，更新後不用做任何設定。
 [/list]
