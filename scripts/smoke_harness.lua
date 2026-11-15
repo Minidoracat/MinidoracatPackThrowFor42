@@ -2862,7 +2862,8 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
         function v:getX() return (x1 + x2 + 1) / 2 end
         function v:getY() return (y1 + y2 + 1) / 2 end
         function v:getZ() return 0 end
-        function v:getSquare() return sq(math.floor(self:getX()), math.floor(self:getY())) end
+        function v:getSquare() return sq(math.floor(self:getX()), math.floor(self:getY())) end -- kept once removed, like the engine
+        function v:isRemovedFromWorld() return self.removed == true end
         function v:getScript() return pickup end
         function v:getMaxPassengers() return 0 end
         function v:getVehicleTowing() return nil end
@@ -2953,6 +2954,54 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
         and Rules.vehicleWhyNot(stranger, truck3) == nil and Rules.captureWhyNot(stranger, cow2, true, Ball) == "SAFEHOUSE"
         and Rules.captureWhyNot(stranger, truck2, false, Steam) == "SAFEHOUSE",
         "安全屋：車身壓到安全屋的格子就擋（只壓到外框範圍不算）；丟出抓取同一條")
+
+    -- a pack action that holds a vehicle already removed: like the engine, a removed vehicle keeps answering getSquare
+    -- (it is worked out from x/y/z, BaseVehicle.java:9818-9820) and only isRemovedFromWorld tells (:8083, :9846)
+    local twin = truck(504, 4, 34, 5, 38)
+    function twin:permanentlyRemove()
+        self.removed = true
+        for x = 4, 5 do for y = 34, 38 do sq(x, y).vehicle = nil end end
+    end
+    function twin:getSqlId() return 504 end
+    local ground = {}
+    sq(5, 36).AddWorldInventoryItem = function(_, it) ground[#ground + 1] = it end -- getSquare: the centre (5, 36.5)
+    local savedCap, savedCargo, savedFxP = M.Snapshot.capture, M.Snapshot.packCargo, M.Fx.broadcast
+    M.Snapshot.capture = function() return { script = "Base.PickUpTruck", parts = {}, cargo = {}, manifest = {}, sealed = {}, skipped = {} } end
+    M.Snapshot.packCargo = function() return 0 end
+    M.Fx.broadcast = function() end
+    local p1, p2 = at("p1", 3, 36), at("p2", 6, 36)
+    for _, p in ipairs({ p1, p2 }) do
+        p.inv.haveThisKeyId = hunter.inv.haveThisKeyId
+        p.inv:AddItem(instanceItem(Steam.empty))
+        clientCommand(M.MODULE, "intent", p, { kind = "pack", id = 504, type = "Steam" })
+    end
+    quiet = true
+    local first = Play.pack(p1, twin)
+    local second = Play.pack(p2, twin)
+    quiet = false
+    M.Snapshot.capture, M.Snapshot.packCargo, M.Fx.broadcast = savedCap, savedCargo, savedFxP
+    check(first == true and second == false and #ground == 1 and p2.inv:getFirstTypeRecurse(Steam.empty) ~= nil
+        and Rules.vehicleWhyNot(p2, twin) == "NO_VEHICLE",
+        "收車動作拿的車已被移除：NO_VEHICLE、空膠囊留著，只掉一顆裝好的膠囊（地上 " .. #ground .. " 顆）")
+    -- the client stops its action once the vehicle goes, so complete() never answers; the server's serverStop says
+    -- why, once, and only when the vehicle is gone (a plain cancel or a finished pack says nothing)
+    local p3 = at("p3", 6, 35)
+    clientCommand(M.MODULE, "intent", p3, { kind = "pack", id = 504, type = "Steam" })
+    clientCommand(M.MODULE, "intent", p3, { kind = "pack", id = 501, type = "Steam" })
+    local n0, savedBase = #sent, ISBaseTimedAction
+    ISBaseTimedAction = { derive = function(self, name) return setmetatable({ Type = name }, { __index = self }) end }
+    loaded["TimedActions/ISBaseTimedAction"] = true
+    loadfile(MEDIA .. "/shared/TimedActions/ISPackVehicleAction.lua")()
+    ISBaseTimedAction, loaded["TimedActions/ISBaseTimedAction"] = savedBase, nil
+    quiet = true
+    ISPackVehicleAction.serverStop({ character = p3, vehicle = twin })
+    ISPackVehicleAction.serverStop({ character = p3, vehicle = twin })
+    ISPackVehicleAction.serverStop({ character = p3, vehicle = truck1 })
+    quiet = false
+    local told = sent[n0 + 1]
+    check(#sent == n0 + 1 and told[1] == p3 and told[3] == "packed" and told[4].ok == false and told[4].why == "NO_VEHICLE"
+        and Play.hasIntent(p3, "pack", 501),
+        "收車動作在 complete() 前被停掉、車已不在：伺服器回一次 NO_VEHICLE（車還在的取消不回、不動它的 intent）")
 
     -- Play.throw with an empty capsule: the capture intent names the target; refusals keep the capsule
     local savedSchedule, savedFx, savedOnline = Throw.schedule, M.Fx.broadcast, getOnlinePlayers

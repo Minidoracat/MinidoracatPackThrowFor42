@@ -131,6 +131,17 @@ function Play.pack(player, vehicle, typeId)
     return res.ok == true
 end
 
+-- ISPackVehicleAction stopped before complete() (MP serverStop: only a pending action is stopped, a completed one
+-- leaves the queue without it, ActionManager.java:107-110,163-185). When the vehicle went meanwhile, the client
+-- stopped the action (Rules.vehicleWhyNot), so complete() never answers: say why here, once (the intent is taken).
+function Play.packStopped(player, vehicle)
+    if not (vehicle and vehicle:isRemovedFromWorld()) then return end
+    local id = vehicle:getId()
+    if not Play.takeIntent(player, "pack", id) then return end
+    refuse(player, "pack-stopped", "NO_VEHICLE", id)
+    Play.send(player, "packed", { ok = false, why = "NO_VEHICLE", vehicleId = id })
+end
+
 -- ISPackAnimalAction. The intent names the animal by its online id (what the client sees; the server rebuilt the
 -- action's animal from it). typeId: the SP client's choice (MP takes it from the intent).
 function Play.packAnimal(player, animal, typeId)

@@ -74,9 +74,10 @@ end
 -- range: tiles from the player to the vehicle (default M.PACK_RANGE; a capture: CAPTURE_REACH). Another floor is out
 -- of reach too: vanilla's right-click picks a vehicle by its outline on any floor (IsoObjectPicker.java:554-566), and a
 -- car parked under the clicked one got packed (2026-10-27). A vehicle's floor is math.floor(getZ())
--- (BaseVehicle.java:3370-3390).
+-- (BaseVehicle.java:3370-3390). A removed vehicle still answers getSquare (worked out from x/y/z, BaseVehicle.java:
+-- 9818-9820); only isRemovedFromWorld tells (:8083, :9846). A timed action may hold a vehicle that is gone by then.
 function Rules.vehicleWhyNot(player, vehicle, range)
-    if not vehicle or not vehicle:getSquare() then return "NO_VEHICLE" end
+    if not vehicle or vehicle:isRemovedFromWorld() or not vehicle:getSquare() then return "NO_VEHICLE" end
     local dx, dy, r = player:getX() - vehicle:getX(), player:getY() - vehicle:getY(), range or M.PACK_RANGE
     if math.floor(vehicle:getZ()) ~= math.floor(player:getZ()) or dx * dx + dy * dy > r * r then return "TOO_FAR" end
     if Rules.occupied(vehicle) then return "OCCUPIED" end

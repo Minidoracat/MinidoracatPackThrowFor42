@@ -30,6 +30,11 @@ function ISPackVehicleAction:complete()
     return M.Play.pack(self.character, self.vehicle, self.typeId)
 end
 
+-- MP server: the action was stopped before complete() (cancelled, or the vehicle went: Play.packStopped).
+function ISPackVehicleAction:serverStop()
+    M.Play.packStopped(self.character, self.vehicle)
+end
+
 function ISPackVehicleAction:getDuration()
     if self.character:isTimedActionInstant() then return 1 end
     return M.Rules.PACK_SECONDS * 50 -- 1 unit = 20 ms (NetTimedAction.getDuration)
