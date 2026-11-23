@@ -132,8 +132,19 @@ local function drawFlight(p, fx, age)
     UIManager.DrawTexture(sprite, sx - w / 2, sy - w / 2, w, w, 1)
 end
 
+-- Project Viewpoint (another author's first / third person 3D view): isoToScreenX/Y is the isometric camera's
+-- projection, so under its view the pictures land nowhere near the spot. Nothing is drawn then; the sound, the flash
+-- and the timing (onDone) stay. Viewpoint.Loot.viewOn is its own "the 3D view is on" (Viewpoint_Build.lua asks the
+-- same); pcall: an error from another mod here would throw every frame and leave the effects stuck.
+local function view3d()
+    local loot = Viewpoint and Viewpoint.Loot
+    if not (loot and loot.viewOn) then return false end
+    local ok, on = pcall(loot.viewOn)
+    return ok and on == true
+end
+
 Events.OnPreUIDraw.Add(function()
-    local now, done = getTimestampMs(), nil
+    local now, done, hide = getTimestampMs(), nil, nil -- hide: asked once a frame, only while something plays
     if #pending > 0 then
         local due = {}
         for i = #pending, 1, -1 do
@@ -147,8 +158,9 @@ Events.OnPreUIDraw.Add(function()
             done = done or {}
             done[#done + 1] = id
         else
+            if hide == nil then hide = view3d() end
             for p = 0, getNumActivePlayers() - 1 do
-                if getSpecificPlayer(p) then
+                if not hide and getSpecificPlayer(p) then
                     if fx.kind == "flight" then drawFlight(p, fx, age) else drawSmoke(p, fx, age) end
                 end
             end

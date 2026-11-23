@@ -3783,6 +3783,32 @@ local function effectsCases() -- 獨立函式：主程式的 local 已接近 200
     check(vehicleGone and unpackGone and refusedGone and otherKept and previewGone,
         "收車煙霧在車心（不在落點）也用編號收掉飛行；丟出展開、落地被拒同樣馬上收；別的編號的煙霧不動這次飛行；預覽沒有編號，照同格收")
     E.active = {}
+    -- Project Viewpoint's 3D view: nothing drawn while it is on, the effect still ends and calls onDone; drawn as
+    -- before when the view is off, when Viewpoint is not there, and when its check throws
+    local drawn, ended = 0, 0
+    local savedDraw = { getNumActivePlayers, getSpecificPlayer, getCore, isoToScreenX, isoToScreenY, Viewpoint }
+    getNumActivePlayers = function() return 1 end
+    getSpecificPlayer = function() return {} end
+    getCore = function() return { getZoom = function() return 1 end } end
+    isoToScreenX, isoToScreenY = function() return 0 end, function() return 0 end
+    UIManager.DrawTexture = function() drawn = drawn + 1 end
+    local function smoke(id, viewOn)
+        Viewpoint = viewOn and { Loot = { viewOn = viewOn } } or nil
+        drawn = 0
+        E.play({ id = id, kind = "unpack", x = 5, y = 1, z = 0, onDone = function() ended = ended + 1 end })
+        at(50)
+        local n = drawn
+        at(60000)
+        return n
+    end
+    local plain = smoke("vp0", nil)
+    local off = smoke("vp1", function() return false end)
+    local on = smoke("vp2", function() return true end)
+    local broken = smoke("vp3", function() error("gone") end)
+    check(plain == 1 and off == 1 and on == 0 and broken == 1 and ended == 4 and next(E.active) == nil,
+        "Project Viewpoint 的 3D 視角開著時不畫煙霧（照樣結束並呼叫 onDone）；沒裝、視角關著、它的檢查出錯時照畫")
+    getNumActivePlayers, getSpecificPlayer, getCore, isoToScreenX, isoToScreenY, Viewpoint = savedDraw[1], savedDraw[2],
+        savedDraw[3], savedDraw[4], savedDraw[5], savedDraw[6]
     Events, getCell = saved.Events, saved.getCell
 end
 effectsCases()

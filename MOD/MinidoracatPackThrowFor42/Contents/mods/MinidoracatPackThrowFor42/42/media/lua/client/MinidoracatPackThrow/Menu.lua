@@ -279,7 +279,10 @@ local function addCapsule(context, player, item)
         return nil
     end
     if item:getWorldItem() then
-        return context:addOption(getText("ContextMenu_MinidoracatPackThrow_Press"), player, Menu.onPress, item)
+        -- The world object rides along as an unused argument: Project Viewpoint's crosshair list keeps only the
+        -- options whose arguments hold the object it points at (its Viewpoint_Interact.lua).
+        return context:addOption(getText("ContextMenu_MinidoracatPackThrow_Press"), player, Menu.onPress, item,
+            item:getWorldItem())
     end
     if carried then
         return context:addOption(getText("ContextMenu_MinidoracatPackThrow_Throw"), player, Menu.onThrow, item)
