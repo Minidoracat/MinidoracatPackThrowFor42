@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "빈 %1이(가) 인벤토리로 돌아왔습니다.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "동물을 꺼내지 못했습니다",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "던져서 수납",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "시동 장치에 꽂힌 열쇠는 이제 차량과 함께 캡슐에 들어가고, 꺼낸 뒤에도 그대로 꽂혀 있습니다."
+    "IGUI_MinidoracatPackThrow_WhatsNew": "가방 안의 캡슐과 팰 스피어를 주 인벤토리로 옮기지 않고 바로 쓸 수 있습니다(던지기, 포획, 꺼내기)."
 }

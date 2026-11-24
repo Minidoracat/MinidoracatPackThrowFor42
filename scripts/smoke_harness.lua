@@ -93,6 +93,20 @@ local function newContainer(holder)
     end
     function c:getCountTypeRecurse(t) return self:getAllTypeRecurse(t):size() end
     function c:getFirstTypeRecurse(t) return self:getAllTypeRecurse(t):get(0) end
+    -- 引擎的 TypeEvalArgPredicate：先比型別才叫 Lua，回 true 才算（ItemContainer.java:4074-4077）；走訪順序是先這一層、
+    -- 再依序進每個袋子（getFirstRecurse／getAllRecurse，ItemContainer.java:1265-1295、1364-1390）
+    function c:getAllTypeEvalArgRecurse(t, fn, arg, out)
+        out = out or {}
+        for _, x in ipairs(self.list) do
+            if x.type == t and fn(x, arg) == true then out[#out + 1] = x end
+        end
+        for _, x in ipairs(self.list) do
+            if x.inv then x.inv:getAllTypeEvalArgRecurse(t, fn, arg, out) end
+        end
+        return out
+    end
+    function c:getFirstTypeEvalArgRecurse(t, fn, arg) return self:getAllTypeEvalArgRecurse(t, fn, arg)[1] end
+    function c:getCountTypeEvalArgRecurse(t, fn, arg) return #self:getAllTypeEvalArgRecurse(t, fn, arg) end
     function c:getAllTypeRecurse(t)
         local out = {}
         local function walk(cc)
@@ -1256,7 +1270,18 @@ do
             "裝車膠囊貨物裡的空膠囊不算自己的：選單不列、不計數，收車挑的是自己袋子裡那顆")
         mine.container:Remove(mine)
         check(Rules.emptyCapsule(cp, T1) == nil and #Rules.emptyTypes(cp) == 0 and Rules.packWhyNot(cp, {}, T1) == "NO_CAPSULE",
-            "身上只剩貨物裡的空膠囊：選單沒有收車選項，伺服器回 NO_CAPSULE")
+            "身上只剩貨物裡的空膠囊：選單沒有可用的款式（只剩灰色的收車選項），伺服器回 NO_CAPSULE")
+        -- not on the player (MP: the bag's chain names someone else, as the server's item sync would see it): not theirs
+        local theirs = cp.inv:AddItem(instanceItem("Base.Bag_Schoolbag"))
+        local inTheirs = theirs.inv:AddItem(instanceItem(T1.empty))
+        theirs.inv.owner = newPlayer("previousOwner", false)
+        local mpPick, mpKinds = Rules.emptyCapsule(cp, T1), #Rules.emptyTypes(cp) -- the harness runs as a server
+        local savedServer = isServer
+        isServer = function() return false end
+        local spPick = Rules.emptyCapsule(cp, T1)
+        isServer = savedServer
+        check(mpPick == nil and mpKinds == 0 and spPick == inTheirs,
+            "多人時袋子指著別人（掛載過又轉手）：那裡面的空膠囊伺服器同步不到，不挑也不計數；單人照算")
     end
     Rules.vehicleWhyNot, Rules.mayPack = savedV, savedM
     SandboxVars = nil
@@ -3181,14 +3206,19 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
         stranger.getCurrentSquare = function() return sq(23, 32) end
         house = drops(sq(22, 31))
         quiet = true
+        local sentBefore, missBefore = #sent, #misses
         Throw.land({ player = stranger, capsuleId = l4.id, x = 22, y = 31, z = 0, mode = "throw", dir = "E" })
-        local insideThrow = lastSent()
+        local insideThrow, afterThrow = lastSent(), #sent
         Throw.land({ player = stranger, capsuleId = c9.id, x = 22, y = 31, z = 0, mode = "capture", cap = { kind = "animal", tid = 77 } })
         local insideMiss = lastSent()
         quiet = false
         stranger.getCurrentSquare = savedSquare
-        check(insideThrow.why == "SAFEHOUSE" and insideThrow.dropped == false and insideMiss.ok == false
+        check(afterThrow == sentBefore + 1 and #sent == sentBefore + 2
+            and insideThrow.mode == "throw" and insideThrow.capsuleId == l4.id and insideThrow.why == "SAFEHOUSE"
+            and insideThrow.dropped == false and insideThrow.feet == true
+            and insideMiss.mode == "capture" and insideMiss.capsuleId == c9.id and insideMiss.ok == false
             and insideMiss.dropped == false and #inside == 0 and #house == 0
+            and #misses == missBefore + 2 and misses[missBefore + 1].id == l4.id and misses[missBefore + 2].id == c9.id
             and stranger.inv:getItemWithIDRecursiv(l4.id) == l4 and stranger.inv:getItemWithIDRecursiv(c9.id) == c9
             and Store.read(l4.id).state == "PACKED",
             "丟的人自己也站在別人的安全屋裡：落地被拒時膠囊不掉在腳下，留在背包（裝好的膠囊與丟出抓取的空膠囊都一樣）")
@@ -3787,6 +3817,12 @@ local function toastCases() -- 獨立函式：主程式的 local 已接近 200 �
     check(goneCapture.title == "IGUI_MinidoracatPackThrow_CaptureFailed"
         and goneCapture.message == "IGUI_MinidoracatPackThrow_Why_NO_CAPSULE",
         "抓取的膠囊已不在身上（NO_CAPSULE）：只寫原因，不寫「還在背包裡」：" .. tostring(goneCapture.message))
+    M.onServerCommand("landed", { ok = false, mode = "throw", why = "SAFEHOUSE", feet = true, dropped = true, capsuleId = 5 })
+    M.onServerCommand("landed", { ok = false, mode = "throw", why = "SAFEHOUSE", feet = true, dropped = false, capsuleId = 5 })
+    local feetDlg, keptDlg = dialogs[#dialogs - 1] or {}, dialogs[#dialogs] or {}
+    check(feetDlg.text == "IGUI_MinidoracatPackThrow_DroppedAtFeet(IGUI_MinidoracatPackThrow_Why_SAFEHOUSE_RELEASE)"
+        and keptDlg.text == "IGUI_MinidoracatPackThrow_CaptureKept(IGUI_MinidoracatPackThrow_Why_SAFEHOUSE_RELEASE)",
+        "落地被安全屋拒絕的丟出：掉在腳邊寫「掉在你腳邊」，自己也站在安全屋裡寫「還在你的背包裡」：" .. tostring(keptDlg.text))
     check(factorRow:find("IGUI_MinidoracatPackThrow_WildChance(85)", 1, true) ~= nil
         and factorRow:find("IGUI_MinidoracatPackThrow_ChanceFactor(name:MinidoracatPackThrow.SphereMega)", 1, true) ~= nil
         and factorRow:find("IGUI_MinidoracatPackThrow_ChanceFactor(IGUI_MinidoracatPackThrow_Factor_Injured)", 1, true) ~= nil

@@ -113,5 +113,5 @@
     "IGUI_MinidoracatPackThrow_SphereBack": "An empty %1 is back in your inventory.",
     "IGUI_MinidoracatPackThrow_ReleaseFailed": "The animal was not released",
     "IGUI_CraftingCategories_MinidoracatPackThrow": "Pack & Throw",
-    "IGUI_MinidoracatPackThrow_WhatsNew": "A key left in the ignition now goes with the vehicle and stays in the ignition after unpacking."
+    "IGUI_MinidoracatPackThrow_WhatsNew": "Capsules and Pal Spheres kept in a bag now work straight from the bag: throw, capture and release."
 }

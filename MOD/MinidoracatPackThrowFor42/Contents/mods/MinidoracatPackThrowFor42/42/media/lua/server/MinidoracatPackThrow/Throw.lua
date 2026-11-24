@@ -4,8 +4,8 @@
 -- Landing: a record that is not a usable PACKED one goes straight to Unpack (it refuses, logs and clears stale cargo);
 -- otherwise the ground must be clear (the vehicle's body, or one square for an animal) and outside other players'
 -- safehouses, then Unpack spawns it. A blocked throw drops the capsule on the landing square (a safehouse refusal: at
--- the thrower's feet); a pressed capsule stays where it lies, a released sphere in the inventory. A thrown empty
--- capsule or sphere captures instead (Throw.capture).
+-- the thrower's feet, or it stays on them: dropAt); a pressed capsule stays where it lies, a released sphere in the
+-- inventory. A thrown empty capsule or sphere captures instead (Throw.capture).
 if isClient() then return end
 require "MinidoracatPackThrow/Core"
 require "MinidoracatPackThrow/Rules"
@@ -49,8 +49,10 @@ local function dropAt(player, capsule, sq)
     local function barred(s)
         return not s or Rules.safehouseWhyNot(player, { x1 = s:getX(), y1 = s:getY(), x2 = s:getX(), y2 = s:getY() }, s:getZ())
     end
-    if barred(sq) then sq = player:getCurrentSquare() end
-    if barred(sq) then return false end
+    if barred(sq) then
+        sq = player:getCurrentSquare()
+        if barred(sq) then return false end
+    end
     player:removeFromHands(capsule)
     c:DoRemoveItem(capsule)
     sendRemoveItemFromContainer(c, capsule)
@@ -77,7 +79,7 @@ end
 -- still be on or next to the aim point and pass the same rules as at the throw (Rules.captureWhyNot, safehouse
 -- included); then the menu's pack path takes it with this very capsule (Pack.packAnimal / Pack.pack: the loaded
 -- capsule lies where the target stood, the pack effect plays there). A miss drops the empty capsule on the landing
--- square (in someone else's safehouse: at the thrower's feet) and the toast says why.
+-- square (in someone else's safehouse: at the thrower's feet, or it stays on them: dropAt) and the toast says why.
 function Throw.capture(p)
     local player = p.player
     local capsule = Unpack.findCapsule(player, p.capsuleId)
@@ -143,7 +145,8 @@ function Throw.land(p)
             reason = Footprint.clear(getScriptManager():getVehicle(snap.script), p.x, p.y, p.z, p.dir)
         end
         if res then
-            -- in someone else's safehouse: a thrown capsule falls at the thrower's feet, a pressed one stays put
+            -- in someone else's safehouse: a thrown capsule falls at the thrower's feet (or stays on them: dropAt), a
+            -- pressed one stays put
             if p.mode == "throw" then res.dropped, res.feet = dropAt(player, capsule, player:getCurrentSquare()), true end
         elseif reason and reason ~= "NO_SCRIPT" then
             res = { ok = false, why = "BLOCKED", reason = reason }

@@ -142,27 +142,24 @@ function Rules.craftOn(t, level)
     return t ~= nil and level ~= nil and level > 1 and Rules.craftLevel(t) == level and Rules.typeOn(t)
 end
 
--- The player's empty capsules of type t at any depth, as a Lua array. An empty one among a loaded capsule's cargo is
--- left out: it is cargo (the engine's own type searches walk into the loaded capsule's container).
-local function empties(player, t)
-    local all, out = player:getInventory():getAllTypeRecurse(t.empty), {}
-    for i = 0, all:size() - 1 do
-        if not M.inCapsule(all:get(i)) then out[#out + 1] = all:get(i) end
-    end
-    return out
+-- An empty capsule the player may use up: the same test as throw, capture and release (M.carries: on the player, a bag
+-- they wear or hold counts, and not cargo inside a loaded capsule; the engine's plain type searches walk into a loaded
+-- capsule's container). The engine calls this for each item of the type (TypeEvalArgPredicate).
+local function usable(item, player)
+    return M.carries(player, item)
 end
 
--- The player's first empty capsule of type t (any depth in the inventory, cargo left out), or nil.
+-- The player's first usable empty capsule of type t (any depth in the inventory), or nil.
 function Rules.emptyCapsule(player, t)
-    return t and empties(player, t)[1]
+    return t and player:getInventory():getFirstTypeEvalArgRecurse(t.empty, usable, player)
 end
 
 -- Every type the player has empty ones of, in M.TYPES order: { { type, n, on }, ... }; spheres: the Pal Sphere tiers
 -- (the animal menu), else the capsules (the vehicle menu).
 function Rules.emptyTypes(player, spheres)
-    local out = {}
+    local inv, out = player:getInventory(), {}
     for _, t in ipairs(M.TYPES) do
-        local n = t.sphere == (spheres == true) and #empties(player, t) or 0
+        local n = t.sphere == (spheres == true) and inv:getCountTypeEvalArgRecurse(t.empty, usable, player) or 0
         if n > 0 then out[#out + 1] = { type = t, n = n, on = Rules.typeOn(t) } end
     end
     return out

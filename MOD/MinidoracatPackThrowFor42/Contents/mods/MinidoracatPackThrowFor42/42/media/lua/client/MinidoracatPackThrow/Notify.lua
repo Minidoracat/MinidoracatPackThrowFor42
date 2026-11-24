@@ -218,7 +218,10 @@ function Handlers.landed(args)
             getText("IGUI_MinidoracatPackThrow_UsedBody", stamp(args.t), state, tostring(args.capsuleId)))
     else
         local text = Notify.reason(args.why, true)
-        if args.feet and args.dropped then text = getText("IGUI_MinidoracatPackThrow_DroppedAtFeet", text) end
+        -- a throw refused at the landing says where the capsule went: at your feet, or still on you
+        if args.feet then
+            text = getText(args.dropped and "IGUI_MinidoracatPackThrow_DroppedAtFeet" or "IGUI_MinidoracatPackThrow_CaptureKept", text)
+        end
         Notify.dialog(getText(release and "IGUI_MinidoracatPackThrow_ReleaseFailed"
             or "IGUI_MinidoracatPackThrow_UnpackFailed"), text)
     end

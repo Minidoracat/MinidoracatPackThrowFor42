@@ -260,7 +260,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [*] [b]Refused before the throw[/b]: nothing is thrown, and the screen gives the reason and "It is still in your inventory."
 [*] [b]Missed[/b]: it takes a moment from release to landing. If the target moves more than a square away from where you aimed, dies, is picked up, or someone gets into the vehicle in that time, the throw misses. The empty capsule or Pal Sphere lies on the landing spot and a "Nothing captured" message gives the reason and "The thrown one fell on the ground."; pick it up and throw again.
 [*] [b]A wild animal broke free[/b]: even a hit can fail by the catch chance. A "Nothing captured" message says "It broke free (success chance 50%)" and "The thrown one fell on the ground."; the animal is still there, so pick up the Pal Sphere and throw again. With "Pal Sphere lost on a failed catch" on, the message says the Pal Sphere is gone and nothing lies on the landing spot.
-[*] [b]Landing spot in someone else's safehouse[/b]: a missed empty capsule or Pal Sphere falls at your feet instead.
+[*] [b]Landing spot in someone else's safehouse[/b]: a missed empty capsule or Pal Sphere falls at your feet instead; if you are standing in that safehouse too, it stays in your inventory.
 [/list]
 === 🧰 Safehouse protection
 {{img:13-safehouse-en.jpg}}
@@ -279,7 +279,7 @@ Vanilla and modded vehicles such as KI5's work the same way.
 [*] [b]Throwing a capsule to unpack a vehicle[/b]: the landing ground (the vehicle's footprint) is checked; one square inside someone else's safehouse is enough, and the cursor says "the spot is in someone else's safehouse".
 [*] [b]Releasing an animal[/b]: a Pal Sphere only puts the animal on a square next to you that is not in someone else's safehouse; if none works it says "no free square next to you" and the Pal Sphere stays in your inventory.
 [*] [b]Refused before the throw[/b]: the capsule is not thrown and stays in your inventory; a pressed one stays where it is.
-[*] [b]Refused on landing[/b] (rare): a thrown capsule falls at your feet, never inside someone else's safehouse; a pressed one stays where it is. The vehicle is still in the capsule.
+[*] [b]Refused on landing[/b] (rare): a thrown capsule falls at your feet, never inside someone else's safehouse; if you are standing in that safehouse too, it stays in your inventory. A pressed one stays where it is. The vehicle is still in the capsule.
 [*] [b]Admin restore[/b]: refused when the chosen spot is in someone else's safehouse; see "Restoring a vehicle or an animal".
 [/list]
 === 🧰 Cargo
