@@ -96,6 +96,13 @@ function M.inCapsule(item)
     return item ~= nil and M.isCapsuleContainer(item:getContainer())
 end
 
+-- True when the player carries `item` at any depth (a bag they wear or hold counts) and it is not cargo inside a
+-- loaded capsule: the one test for throw, capture and release (menu, action isValid, server complete). The object
+-- itself is matched: the server's action item was resolved from a container the client named.
+function M.carries(player, item)
+    return item ~= nil and not M.inCapsule(item) and player:getInventory():containsRecursive(item)
+end
+
 -- Drops capsule containers from a java ArrayList<ItemContainer> in place (crafting and building input lists).
 function M.withoutCapsules(list)
     if not list then return list end

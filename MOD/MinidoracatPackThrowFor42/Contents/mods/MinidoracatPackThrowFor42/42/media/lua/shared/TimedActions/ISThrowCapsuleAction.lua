@@ -25,8 +25,7 @@ local function side()
 end
 
 function ISThrowCapsuleAction:isValid()
-    return self.item ~= nil and (M.isLoaded(self.item) or M.isEmpty(self.item))
-        and self.character:getInventory():containsID(self.item:getID())
+    return (M.isLoaded(self.item) or M.isEmpty(self.item)) and M.carries(self.character, self.item)
 end
 
 -- faceLocation sets the direction at once, but the body (animAngle) turns only when the gap is more than the waist

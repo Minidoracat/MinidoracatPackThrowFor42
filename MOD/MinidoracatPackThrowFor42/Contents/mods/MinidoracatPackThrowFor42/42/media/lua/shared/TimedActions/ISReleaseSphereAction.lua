@@ -9,7 +9,7 @@ ISReleaseSphereAction = ISBaseTimedAction:derive("ISReleaseSphereAction")
 local M = MinidoracatPackThrow
 
 function ISReleaseSphereAction:isValid()
-    return self.item ~= nil and M.isLoaded(self.item) and self.character:getInventory():containsID(self.item:getID())
+    return M.isLoaded(self.item) and M.carries(self.character, self.item)
 end
 
 function ISReleaseSphereAction:start()

@@ -217,7 +217,7 @@ end
 function Play.throw(action)
     local player, item, x, y, z = action.character, action.item, action.x, action.y, action.z
     local id = item and item:getID()
-    if not (item and (M.isLoaded(item) or M.isEmpty(item)) and player:getInventory():containsID(id)) then
+    if not ((M.isLoaded(item) or M.isEmpty(item)) and M.carries(player, item)) then
         return refuse(player, "throw", "NO_CAPSULE", id)
     end
     local kind = intentKind(item)
@@ -274,7 +274,7 @@ function Play.release(player, item)
     local id = item and item:getID()
     if not Play.takeIntent(player, "release", id) then return refuse(player, "release", "NO_INTENT", id) end
     local why, x, y, z
-    if not (loadedSphere(item) and player:getInventory():containsID(id)) then
+    if not (loadedSphere(item) and M.carries(player, item)) then
         why = "NO_CAPSULE"
     elseif player:getVehicle() then
         why = "IN_VEHICLE"

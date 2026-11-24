@@ -142,6 +142,8 @@ function Unpack.unpack(player, capsule, square, dir, opts)
     end
     local t = M.typeOf(capsule) or M.TYPES[1]
     removeCapsule(player, capsule)
+    -- the empty one goes to the main inventory even when the capsule came out of a bag: the bag may not take it,
+    -- the main inventory always does (no capacity check on this path)
     local inv = player:getInventory()
     local empty = M.Rules.returnsEmpty(t) and instanceItem(t.empty)
     if empty then

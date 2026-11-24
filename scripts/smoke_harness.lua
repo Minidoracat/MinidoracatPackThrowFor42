@@ -80,6 +80,14 @@ local function newContainer(holder)
             if r then return r end
         end
     end
+    -- 物件比對、任何深度（ItemContainer.containsRecursive）。刻意不做 containsID：它不遞迴（ItemContainer.java:3175），
+    -- 舊 harness 把它補成遞迴，所以「袋子裡的膠囊丟不出去」一直抓不到
+    function c:containsRecursive(it)
+        for _, x in ipairs(self.list) do
+            if x == it or (x.inv and x.inv:containsRecursive(it)) then return true end
+        end
+        return false
+    end
     function c:getCountTypeRecurse(t) return self:getAllTypeRecurse(t):size() end
     function c:getFirstTypeRecurse(t) return self:getAllTypeRecurse(t):get(0) end
     function c:getAllTypeRecurse(t)
@@ -1143,6 +1151,7 @@ local function fakeSquare(x, y)
     function s:HasTree() return self.tree == true end
     function s:has(flag) return (flag == "solidfloor" and self.floor) or (flag == "water" and self.water == true) end
     function s:getAnimals() return javaList(self.animals or {}) end
+    function s:getWorldObjects() return javaList({}) end
     function s:isOutside() return self.outside end
     function s:isBlockedTo(o)
         if o.x == self.x + 1 then return self.wallE end
@@ -1308,11 +1317,9 @@ nowMs = nowMs + 61000
 check(not Play.hasIntent(alice, "throw", 9), "60 秒後過期")
 logLines = {}
 local printed, savedPrint = {}, print
-alice.inv.containsID = function() return false end
 print = function(s) printed[#printed + 1] = tostring(s) end
 local refused = Play.pack(alice, { getId = function() return 77 end }, "local")
-local thrown = Play.throw({ character = alice, item = { getID = function() return 5 end,
-    getFullType = function() return M.TYPES[1].loaded end }, x = 1, y = 1, z = 0 })
+local thrown = Play.throw({ character = alice, item = instanceItem(M.TYPES[1].loaded), x = 1, y = 1, z = 0 })
 print = savedPrint
 check(refused == false and printed[1] and printed[1]:find("pack refused by=alice why=NO_INTENT", 1, true) ~= nil,
     "沒有 intent 的收車被拒並記一行：" .. tostring(printed[1]))
@@ -1325,10 +1332,10 @@ do -- 動作瞬間完成（管理員作弊）時沒有放手事件：complete �
         Fx.broadcast = function(kind) kinds[#kinds + 1] = kind end
         Fp.reach = function() return nil end
         Th.schedule = function(_, t) at = t end
-        alice.inv.containsID = function() return true end
-        clientCommand(M.MODULE, "intent", alice, { kind = "throw", id = 5 })
-        local ok = Play.throw({ character = alice, item = { getID = function() return 5 end,
-            getFullType = function() return M.TYPES[1].loaded end }, x = 1, y = 1, z = 0 })
+        local cap = alice.inv:AddItem(instanceItem(M.TYPES[1].loaded))
+        clientCommand(M.MODULE, "intent", alice, { kind = "throw", id = cap.id })
+        local ok = Play.throw({ character = alice, item = cap, x = 1, y = 1, z = 0 })
+        alice.inv:Remove(cap)
         Fx.broadcast, Fp.reach, Th.schedule = saved[1], saved[2], saved[3]
         check(ok == true and kinds[1] == "flight" and at == nowMs + Th.FLIGHT_MS,
             "沒有放手事件時 complete 先送飛行特效、FLIGHT_MS 後落地（" .. tostring(kinds[1]) .. "）")
@@ -2827,7 +2834,6 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
         function p:getY() return y + 0.5 end
         function p:getCurrentSquare() return sq(x, y) end
         p.inv.haveThisKeyId = function() return nil end
-        p.inv.containsID = function(c, id) return c:getItemWithIDRecursiv(id) ~= nil end
         return p
     end
     local function beast(x, y, oid)
@@ -3222,7 +3228,6 @@ local function sphereCases() -- 獨立函式：主程式的 local 已接近 200 
         function p:getX() return x + 0.5 end
         function p:getY() return y + 0.5 end
         function p:getCurrentSquare() return sq(x, y) end
-        p.inv.containsID = function(c, id) return c:getItemWithIDRecursiv(id) ~= nil end
         return p
     end
     local me = player("me", 12, 7) -- three squares north of the animal: in front of one facing -y, behind one facing +y
@@ -3398,6 +3403,150 @@ local function sphereCases() -- 獨立函式：主程式的 local 已接近 200 
     SandboxVars = nil
 end
 sphereCases()
+
+print("袋子裡的膠囊與帕魯球：不必搬進主背包就能丟、抓、放（M.carries）；裝車膠囊的貨物、不在身上的一律不行")
+do (function() -- 獨立函式：主程式的 local 已到 200 個上限
+    local Steam, Mega, Throw, Unpack = M.TYPE_BY_ID.Steam, M.TYPE_BY_ID.SphereMega, M.Throw, M.Unpack
+    local saved = { base = ISBaseTimedAction, schedule = Throw.schedule, spawn = Unpack.spawn, fx = M.Fx.broadcast,
+        online = getOnlinePlayers, find = Footprint.find, capWhy = Rules.captureWhyNot, pack = M.Pack.pack }
+    ISBaseTimedAction = { derive = function(self, name) return setmetatable({ Type = name }, { __index = self }) end }
+    loaded["TimedActions/ISBaseTimedAction"] = true
+    loadfile(MEDIA .. "/shared/TimedActions/ISThrowCapsuleAction.lua")()
+    loadfile(MEDIA .. "/shared/TimedActions/ISReleaseSphereAction.lua")()
+    ISBaseTimedAction, loaded["TimedActions/ISBaseTimedAction"] = saved.base, nil
+    local scheduled, spawns, packed, players = {}, 0, {}, {}
+    Throw.schedule = function(p) scheduled[#scheduled + 1] = p end
+    Unpack.spawn = function(_, square)
+        spawns = spawns + 1
+        return { getSquare = function() return square end, getAnimalID = function() return 88 end,
+            getOnlineID = function() return 702 end }, { home = 0, other = 0, ground = 0 }
+    end
+    M.Fx.broadcast = function() end
+    getOnlinePlayers = function() return javaList(players) end
+    SandboxVars = { MinidoracatPackThrow = {} }
+    SafeHouse = nil
+    local function carrier(name)
+        local p = newPlayer(name, false)
+        function p:getX() return 3.5 end
+        function p:getY() return 3.5 end
+        function p:getCurrentSquare() return sq(3, 3) end
+        players[#players + 1] = p
+        return p
+    end
+    local function bagIn(container) return container:AddItem(instanceItem("Base.Bag_Schoolbag")) end
+    -- a loaded capsule or sphere in `container` with a settled PACKED record (an animal: the landing needs one square)
+    local function loadedIn(container, t)
+        local it = container:AddItem(instanceItem(t.loaded))
+        Store.write(it.id, { kind = "animal", animal = { type = "rabbit", breed = "swamp", animalId = 88 }, state = "PACKED",
+            settled = true, packedBy = "x", history = { { t = 1, ev = "PACKED", x = 5, y = 5, z = 0, animal = 88 } } })
+        return it
+    end
+    local function throwOf(p, item) -- the action as the server rebuilds it: aimed two squares east
+        return setmetatable({ character = p, item = item, x = 5, y = 3, z = 0 }, { __index = ISThrowCapsuleAction })
+    end
+    local function releaseOf(p, item)
+        return setmetatable({ character = p, item = item }, { __index = ISReleaseSphereAction })
+    end
+    local function intent(p, kind, item, cap)
+        clientCommand(M.MODULE, "intent", p, { kind = kind, id = item.id, target = cap and "vehicle", tid = cap })
+    end
+    local function lastSent() local s = sent[#sent]; return s and s[4] or {} end
+    local say = check -- the server's log lines stay quiet, the verdicts print
+    local function check(ok, label) quiet = false; say(ok, label); quiet = true end
+    quiet = true
+
+    -- a loaded capsule in a worn bag: valid, scheduled once, lands; the capsule leaves the bag, the empty one comes back
+    local a = carrier("bagger")
+    local bag = bagIn(a.inv)
+    local cap = loadedIn(bag.inv, Steam)
+    local act = throwOf(a, cap)
+    local valid = act:isValid()
+    intent(a, "throw", cap)
+    local ok = Play.throw(act)
+    Throw.land(scheduled[1] or { player = a, capsuleId = 0, x = 5, y = 3, z = 0, mode = "throw" })
+    local landed, back = lastSent(), a.inv:getFirstTypeRecurse(Steam.empty)
+    check(valid == true and ok == true and #scheduled == 1 and landed.ok == true and cap.container == nil and bag.inv:isEmpty()
+        and Store.read(cap.id).state == "UNPACKED" and back ~= nil and back.container == a.inv,
+        "裝好的膠囊在書包裡直接丟：動作有效、排一次落地、展開後膠囊離開書包，空膠囊還到主背包（why=" .. tostring(landed.why) .. "）")
+
+    -- two bags deep
+    local deep = loadedIn(bagIn(bag.inv).inv, Steam)
+    intent(a, "throw", deep)
+    check(throwOf(a, deep):isValid() == true and Play.throw(throwOf(a, deep)) == true and #scheduled == 2, "袋中袋（兩層）裡的膠囊也能丟")
+
+    -- an empty capsule in the bag thrown at a vehicle: the catch uses that very capsule; a miss drops it out of the bag
+    local truck = { getId = function() return 601 end }
+    Footprint.find = function() return truck end
+    Rules.captureWhyNot = function() return nil end
+    M.Pack.pack = function(_, v, opts) packed[#packed + 1] = { v, opts }; return { ok = true, capsuleId = 779 } end
+    local empty = bag.inv:AddItem(instanceItem(Steam.empty))
+    local emptyValid = throwOf(a, empty):isValid()
+    intent(a, "capture", empty, 601)
+    local caught = Play.throw(throwOf(a, empty))
+    local cp = scheduled[3] or {}
+    Throw.land(cp)
+    Footprint.find = function() return nil end -- the target left before the landing
+    local drops = {}
+    sq(5, 3).AddWorldInventoryItem = function(_, it) drops[#drops + 1] = it end
+    Throw.land(cp)
+    local missSent = lastSent()
+    sq(5, 3).AddWorldInventoryItem = nil
+    check(emptyValid == true and caught == true and cp.mode == "capture" and packed[1] and packed[1][1] == truck
+        and packed[1][2].empty == empty, "空膠囊在書包裡丟出抓取：動作有效、排落地，Pack.pack 拿到的就是書包裡那顆")
+    check(missSent.why == "NO_TARGET" and missSent.dropped == true and drops[1] == empty and empty.container == nil,
+        "書包裡的空膠囊沒中：從書包拿出來、掉在落點")
+
+    -- a loaded sphere in the bag: released next to the player; the same tier comes back to the main inventory
+    local ball = loadedIn(bag.inv, Mega)
+    local ballValid = releaseOf(a, ball):isValid()
+    intent(a, "release", ball)
+    local let = Play.release(a, ball)
+    local rp = scheduled[4] or {}
+    Throw.land(rp)
+    local out, megaBack = lastSent(), a.inv:getFirstTypeRecurse(Mega.empty)
+    check(ballValid == true and let == true and rp.mode == "release" and out.ok == true and ball.container == nil
+        and megaBack ~= nil and megaBack.container == a.inv,
+        "帕魯球在書包裡直接放出：動作有效、落地後球離開書包，同級空球還到主背包（why=" .. tostring(out.why) .. "）")
+
+    -- cargo lock: nothing inside a loaded capsule is thrown, captured with or released, forged intents included;
+    -- with the capsule in the main inventory, then in the bag
+    local n, spawned = #scheduled, spawns
+    for _, where in ipairs({ a.inv, bag.inv }) do
+        local holder = loadedIn(where, Steam)
+        local b, e, s = loadedIn(holder.inv, Steam), holder.inv:AddItem(instanceItem(Steam.empty)), loadedIn(holder.inv, Mega)
+        local anyValid = throwOf(a, b):isValid() or throwOf(a, e):isValid() or releaseOf(a, s):isValid()
+        Footprint.find = function() return truck end
+        intent(a, "throw", b); intent(a, "capture", e, 601); intent(a, "release", s)
+        local forged = Play.throw(throwOf(a, b)) or Play.throw(throwOf(a, e)) or Play.release(a, s)
+        check(anyValid == false and forged == false and #scheduled == n and b.container == holder.inv and e.container == holder.inv
+            and s.container == holder.inv and Store.read(b.id).state == "PACKED" and Store.read(s.id).state == "PACKED",
+            "貨物鎖：裝車膠囊（在" .. (where == a.inv and "主背包" or "書包") .. "）裡的膠囊、空膠囊、帕魯球都不能丟、抓、放，硬送 intent 也被拒，東西不動")
+        where:Remove(holder)
+    end
+
+    -- not carried: in a bag nobody holds, on another player
+    local other = carrier("other")
+    local loose, theirs = loadedIn(instanceItem("Base.Bag_Schoolbag").inv, Steam), loadedIn(other.inv, Steam)
+    intent(a, "throw", loose); intent(a, "throw", theirs)
+    check(throwOf(a, loose):isValid() == false and throwOf(a, theirs):isValid() == false and Play.throw(throwOf(a, loose)) == false
+        and Play.throw(throwOf(a, theirs)) == false and #scheduled == n, "不在自己身上的膠囊（沒人拿的袋子裡、別人身上）不能丟")
+
+    -- the bag leaves the player while the capsule flies: nothing lands, nothing is taken
+    local late = loadedIn(bag.inv, Steam)
+    intent(a, "throw", late)
+    local flew = Play.throw(throwOf(a, late))
+    a.inv:Remove(bag)
+    Throw.land(scheduled[#scheduled])
+    local lateSent = lastSent()
+    check(flew == true and lateSent.ok == false and lateSent.why == "NO_CAPSULE" and late.container == bag.inv
+        and Store.read(late.id).state == "PACKED" and spawns == spawned,
+        "飛行中袋子離身：落地 NO_CAPSULE，膠囊還在袋子裡、紀錄 PACKED、沒生東西")
+
+    quiet = false
+    Throw.schedule, Unpack.spawn, M.Fx.broadcast, getOnlinePlayers = saved.schedule, saved.spawn, saved.fx, saved.online
+    Footprint.find, Rules.captureWhyNot, M.Pack.pack = saved.find, saved.capWhy, saved.pack
+    SandboxVars = nil
+end)() end
 
 print("Notify：Toast 沒有第二行時只寫一次")
 local function toastCases() -- 獨立函式：主程式的 local 已接近 200 個上限
@@ -4155,7 +4304,7 @@ end)() end
 print("ThrowCursor：丟出後同一幀別的 MOD 再畫一次游標，提示框不留在畫面上（Workshop 留言 2026-10-25）")
 do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
     local saved = { cell = getCell, core = getCore, queue = ISTimedActionQueue, menu = ISWorldObjectContextMenu,
-        inv = ISInventoryPaneContextMenu, bo = ISBuildingObject, joy = JoypadState, act = ISThrowCapsuleAction }
+        bo = ISBuildingObject, joy = JoypadState, act = ISThrowCapsuleAction }
     local Cursor = M.ThrowCursor
     -- IsoCell.setDrag: deactivates the previous drag, found the way KahluaTableImpl.rawget finds it (the instance, then
     -- the metatable's own keys: IsoCell.java:2558-2568, KahluaTableImpl.java:98)
@@ -4188,7 +4337,6 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
         return n
     end
     ISTimedActionQueue = { isPlayerDoingAction = function() return false end, add = function() queued = queued + 1 end }
-    ISInventoryPaneContextMenu = { transferIfNeeded = function() end }
     ISThrowCapsuleAction = { new = function() return {} end }
     ISBuildingObject = { derive = function(self, name) return setmetatable({ Type = name }, { __index = self }) end,
         init = function() end, getFloorCursorSprite = function() return { RenderGhostTileColor = function() end } end }
@@ -4211,7 +4359,7 @@ do (function() -- 獨立函式：主程式的 local 已接近 200 個上限
         "丟出後（游標已關、已排入丟出）同一幀別的 MOD 再畫一次游標：提示框不再出現（開著 " .. before .. "、關掉 " .. closed
         .. "、再畫一次後 " .. onScreen() .. "）")
     getCell, getCore, ISTimedActionQueue, ISWorldObjectContextMenu = saved.cell, saved.core, saved.queue, saved.menu
-    ISInventoryPaneContextMenu, ISBuildingObject, JoypadState, ISThrowCapsuleAction = saved.inv, saved.bo, saved.joy, saved.act
+    ISBuildingObject, JoypadState, ISThrowCapsuleAction = saved.bo, saved.joy, saved.act
 end)() end
 
 print("ISThrowCapsuleAction:waitToStart：只等真的要轉身的角度；腰扭得過去的小角度馬上丟（使用者 2026-10-16 還是等一兩秒）")

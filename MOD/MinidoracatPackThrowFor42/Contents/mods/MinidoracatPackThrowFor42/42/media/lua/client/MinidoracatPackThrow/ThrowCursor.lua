@@ -303,7 +303,6 @@ function Cursor.queue(player, item, mode, x, y, z, target)
         ISTimedActionQueue.add(action)
         return action
     end
-    ISInventoryPaneContextMenu.transferIfNeeded(player, item)
     local capture
     if mode == "capture" and target then
         local kind = target.animal and "animal" or "vehicle"

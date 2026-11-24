@@ -219,7 +219,6 @@ function Menu.onCapture(player, item) M.ThrowCursor.open(player, item, "capture"
 
 -- A loaded Pal Sphere: tells the server who asks and lets the animal out next to the player (Play.release).
 function Menu.onRelease(player, item)
-    ISInventoryPaneContextMenu.transferIfNeeded(player, item)
     if isClient() then sendClientCommand(player, M.MODULE, "intent", { kind = "release", id = item:getID() }) end
     local action = ISReleaseSphereAction:new(player, item)
     ISTimedActionQueue.add(action)
@@ -268,7 +267,7 @@ end
 
 -- A loaded Pal Sphere is only released from the inventory, never pressed on the ground nor thrown, nor in a vehicle.
 local function addCapsule(context, player, item)
-    local carried = not item:getWorldItem() and player:getInventory():containsRecursive(item)
+    local carried = M.carries(player, item)
     if M.typeOf(item).sphere then
         if carried and not player:getVehicle() then
             local label, named = Menu.releaseLabel(item)
@@ -297,8 +296,7 @@ Events.OnFillInventoryObjectContextMenu.Add(function(playerNum, context, items)
             addCapsule(context, player, item)
             return
         end
-        if M.isEmpty(item) and not M.inCapsule(item) and not item:getWorldItem()
-            and player:getInventory():containsRecursive(item) then
+        if M.isEmpty(item) and M.carries(player, item) then
             context:addOption(getText("ContextMenu_MinidoracatPackThrow_Capture"), player, Menu.onCapture, item)
             return
         end
