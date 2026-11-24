@@ -249,6 +249,18 @@ function Play.throw(action)
     return true
 end
 
+-- ISThrowCapsuleAction stopped before complete() (MP: serverStop, SP: stop), so Play.throw never answers. Only a throw
+-- already shown flying whose capsule left the player meanwhile is answered, once: a plain cancel says nothing.
+function Play.throwStopped(action)
+    local player, item = action.character, action.item
+    if not (action.flightAt and item) or M.carries(player, item) then return end
+    local id, kind = item:getID(), intentKind(item)
+    if not Play.takeIntent(player, kind, id) then return end
+    Fx.broadcast("miss", { x = action.x, y = action.y, z = action.z, capsuleId = id })
+    Play.send(player, "landed", { ok = false, why = "NO_CAPSULE", capsuleId = id, mode = kind })
+    refuse(player, "throw-stopped", "NO_CAPSULE", id)
+end
+
 -- ISPressCapsuleAction complete: a capsule on the ground near the player; the vehicle lands within PRESS_RANGE of it.
 function Play.press(player, capsuleId, x, y, z)
     if not Play.takeIntent(player, "press", capsuleId) then return refuse(player, "press", "NO_INTENT", capsuleId) end

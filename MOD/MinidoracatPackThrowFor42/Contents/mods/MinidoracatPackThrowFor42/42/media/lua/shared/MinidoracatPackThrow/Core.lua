@@ -97,12 +97,23 @@ function M.inCapsule(item)
 end
 
 -- True when the player carries `item` (a bag they wear or hold counts) and it is not cargo inside a loaded capsule:
--- the one test for throw, capture and release (menu, action isValid, server complete and landing). getCharacter is
--- what the server's item sync asks (GameServer.sendRemoveItemFromContainer): it walks up to 16 containers
--- (ItemContainer.java:3327-3345), so whatever passes here the client is also told about.
+-- the one test for throw, capture and release (menu, action isValid, server complete and landing). It follows the
+-- containers that really hold the item up to the main inventory, as far as the landing's own search goes
+-- (getItemWithIDRecursiv: 16 bags). In MP it also asks getCharacter, as the server's item sync does
+-- (GameServer.sendRemoveItemFromContainer): that looks at 16 containers (ItemContainer.java:3327-3345), so 15 bags,
+-- and whatever passes the client is told about. getCharacter alone is not ownership: it returns the first parent it
+-- meets, and a bag once attached keeps its old owner as parent (IsoGameCharacter.java:3575-3588).
 function M.carries(player, item)
-    local c = item and item:getContainer()
-    return c ~= nil and c:getCharacter() == player and not M.inCapsule(item)
+    if item == nil or M.inCapsule(item) then return false end
+    local inv, c = player:getInventory(), item:getContainer()
+    if c == nil or (isClient() or isServer()) and c:getCharacter() ~= player then return false end
+    for _ = 1, 17 do
+        if c == inv then return true end
+        local holder = c:getContainingItem()
+        c = holder and holder:getContainer()
+        if c == nil then return false end
+    end
+    return false
 end
 
 -- Drops capsule containers from a java ArrayList<ItemContainer> in place (crafting and building input lists).

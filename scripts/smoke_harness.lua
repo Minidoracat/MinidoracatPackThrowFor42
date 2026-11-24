@@ -3426,7 +3426,10 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
         return { getSquare = function() return square end, getAnimalID = function() return 88 end,
             getOnlineID = function() return 702 end }, { home = 0, other = 0, ground = 0 }
     end
-    M.Fx.broadcast = function(kind) if kind == "flight" then flights = flights + 1 end end
+    local misses = {}
+    M.Fx.broadcast = function(kind, args)
+        if kind == "flight" then flights = flights + 1 elseif kind == "miss" then misses[#misses + 1] = args.capsuleId end
+    end
     getOnlinePlayers = function() return javaList(players) end
     SandboxVars = { MinidoracatPackThrow = {} }
     SafeHouse = nil
@@ -3537,20 +3540,37 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
     Play.released(throwOf(a, loose))
     local looseThrown = Play.throw(throwOf(a, loose))
     local looseSent, looseCount = lastSent(), #sent - sentBefore
+    local theirsThrown = Play.throw(throwOf(a, theirs))
+    local theirsSent, theirsCount = lastSent(), #sent - sentBefore
     check(throwOf(a, loose):isValid() == false and throwOf(a, theirs):isValid() == false and looseThrown == false
-        and Play.throw(throwOf(a, theirs)) == false and #scheduled == n, "不在自己身上的膠囊（沒人拿的袋子裡、別人身上）不能丟")
+        and theirsThrown == false and #scheduled == n, "不在自己身上的膠囊（沒人拿的袋子裡、別人身上）不能丟")
     check(flights == flightsBefore and looseCount == 1 and looseSent.why == "NO_CAPSULE" and looseSent.capsuleId == loose.id
-        and looseSent.mode == "throw" and Play.throw(throwOf(a, loose)) == false and #sent == sentBefore + 2,
-        "丟的時候膠囊已不在身上：不畫飛行，回一次 NO_CAPSULE（帶那顆的編號）；intent 用掉後再送不再回")
+        and looseSent.mode == "throw" and theirsCount == 2 and theirsSent.capsuleId == theirs.id
+        and Play.throw(throwOf(a, loose)) == false and Play.throw(throwOf(a, theirs)) == false and #sent == sentBefore + 2,
+        "丟的時候膠囊已不在身上：不畫飛行，每顆各回一次 NO_CAPSULE（帶那顆的編號）；intent 用掉後再送不再回")
 
-    -- how deep: what the server can tell the client about (15 bags between the item and the main inventory)
+    -- how deep. MP: what the server can tell the client about (15 bags between the item and the main inventory);
+    -- alone: as far as the landing finds it (16)
     local function nested(depth)
         local c = a.inv
         for _ = 1, depth do c = bagIn(c).inv end
         return loadedIn(c, Steam)
     end
-    check(throwOf(a, nested(15)):isValid() == true and throwOf(a, nested(16)):isValid() == false,
-        "袋子最多 15 層：第 16 層伺服器沒辦法把移除同步給玩家（引擎 getCharacter 只往外看 16 個容器），不能丟")
+    local mp15, mp16 = throwOf(a, nested(15)):isValid(), throwOf(a, nested(16)):isValid()
+    local savedServer = isServer
+    isServer = function() return false end
+    local sp16, sp17 = throwOf(a, nested(16)):isValid(), throwOf(a, nested(17)):isValid()
+    -- a bag that keeps an old owner as parent (once attached, then handed over): alone the one who really holds it;
+    -- in MP nobody, as the server would sync the removal to the old owner
+    local handed = bagIn(other.inv)
+    handed.inv.owner = a
+    local stale = loadedIn(handed.inv, Steam)
+    local spOld, spNew = M.carries(a, stale), M.carries(other, stale)
+    isServer = savedServer
+    check(mp15 == true and mp16 == false and sp16 == true and sp17 == false,
+        "袋子層數：MP 最多 15 層（第 16 層伺服器沒辦法把移除同步給玩家），單人 16 層（落地找得到的範圍）")
+    check(spOld == false and spNew == true and M.carries(a, stale) == false and M.carries(other, stale) == false,
+        "袋子的 parent 還留著前一個人（掛載過再轉手）：看實際在誰的背包；MP 兩邊都不算（同步會送錯人）")
 
     -- while it flies the bag goes back among a loaded capsule's cargo (Guard), or leaves the player: nothing lands,
     -- nothing is taken, one answer each
@@ -3586,6 +3606,41 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
         and lateSent.ok == false and lateSent.why == "NO_CAPSULE" and lateSent.capsuleId == late.id and lateSent.mode == "throw"
         and late.container == bag2.inv and Store.read(late.id).state == "PACKED" and spawns == spawned,
         "飛行中袋子離身：落地回一次 NO_CAPSULE（這顆的），膠囊還在袋子裡、紀錄 PACKED、沒生東西")
+
+    -- the release already showed it flying, then the bag left before complete: that flight ends, one answer
+    a.inv:AddItem(bag2)
+    intent(a, "throw", late)
+    local act = throwOf(a, late)
+    flightsBefore = flights
+    Play.released(act)
+    a.inv:Remove(bag2)
+    local missBefore = #misses
+    sentBefore = #sent
+    local afterRelease = Play.throw(act)
+    check(flights == flightsBefore + 1 and afterRelease == false and #misses == missBefore + 1 and misses[#misses] == late.id
+        and #sent == sentBefore + 1 and lastSent().why == "NO_CAPSULE" and lastSent().capsuleId == late.id,
+        "放手後、完成前袋子離身：已畫的飛行收掉（一次 miss，這顆的），回一次 NO_CAPSULE")
+
+    -- the same, but the client saw it first and stopped the action: complete() never runs, the stop answers once;
+    -- a plain cancel (still carried) answers nothing
+    a.inv:AddItem(bag2)
+    intent(a, "throw", late)
+    local cancelled = throwOf(a, late)
+    Play.released(cancelled)
+    missBefore, sentBefore = #misses, #sent
+    cancelled:serverStop()
+    local plainCancel = #misses == missBefore and #sent == sentBefore
+    a.inv:Remove(bag2)
+    local invalid = cancelled:isValid() == false
+    cancelled:serverStop()
+    cancelled:serverStop()
+    local savedBase = ISBaseTimedAction
+    ISBaseTimedAction = { stop = function() end }
+    cancelled:stop()
+    ISBaseTimedAction = savedBase
+    check(plainCancel and invalid and #misses == missBefore + 1 and misses[#misses] == late.id and #sent == sentBefore + 1
+        and lastSent().why == "NO_CAPSULE" and lastSent().capsuleId == late.id and lastSent().mode == "throw",
+        "放手後袋子離身、動作被停掉（complete 沒跑）：停掉時收掉飛行、回一次 NO_CAPSULE；還在身上的一般取消不回")
 
     quiet = false
     Throw.schedule, Unpack.spawn, M.Fx.broadcast, getOnlinePlayers = saved.schedule, saved.spawn, saved.fx, saved.online
@@ -3676,6 +3731,11 @@ local function toastCases() -- 獨立函式：主程式的 local 已接近 200 �
     local animalDlg, vehicleDlg, roomDlg = dialogs[n - 3] or {}, dialogs[n - 2] or {}, dialogs[n - 1] or {}
     local throwDlg = dialogs[n] or {}
     local wrongToast, releasedToast = shown[#shown - 1] or {}, shown[#shown] or {}
+    M.onServerCommand("landed", { ok = false, mode = "capture", why = "NO_CAPSULE", capsuleId = 5 })
+    local goneCapture = shown[#shown] or {}
+    check(goneCapture.title == "IGUI_MinidoracatPackThrow_CaptureFailed"
+        and goneCapture.message == "IGUI_MinidoracatPackThrow_Why_NO_CAPSULE",
+        "抓取的膠囊已不在身上（NO_CAPSULE）：只寫原因，不寫「還在背包裡」：" .. tostring(goneCapture.message))
     check(factorRow:find("IGUI_MinidoracatPackThrow_WildChance(85)", 1, true) ~= nil
         and factorRow:find("IGUI_MinidoracatPackThrow_ChanceFactor(name:MinidoracatPackThrow.SphereMega)", 1, true) ~= nil
         and factorRow:find("IGUI_MinidoracatPackThrow_ChanceFactor(IGUI_MinidoracatPackThrow_Factor_Injured)", 1, true) ~= nil

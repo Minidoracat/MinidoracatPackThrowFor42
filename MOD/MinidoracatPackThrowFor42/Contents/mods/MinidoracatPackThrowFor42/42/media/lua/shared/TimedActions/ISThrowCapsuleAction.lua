@@ -8,7 +8,8 @@ require "MinidoracatPackThrow/Core"
 -- CapsuleRelease (30%) is when the capsule leaves the hand (nearby clients see it fly); CapsuleEnd (75%) ends
 -- the action. The dedicated server plays no animations, so serverStart emulates both events with the same
 -- timing (emulateAnimEventOnce, LuaManager.java:12237; same approach as Workshop 3809762635).
--- Only complete() changes the world (server, or SP): an action stopped after the release never gets there.
+-- Only complete() changes the world (server, or SP): an action stopped after the release never gets there (the
+-- stop only tells the thrower when the capsule is no longer on them: Play.throwStopped).
 -- The client sends a "throw" intent when it queues this (client/MinidoracatPackThrow/Menu.lua).
 ISThrowCapsuleAction = ISBaseTimedAction:derive("ISThrowCapsuleAction")
 
@@ -86,6 +87,16 @@ end
 -- MP: server only (LuaTimedActionNew.java:163-170); SP: local.
 function ISThrowCapsuleAction:complete()
     return M.Play.throw(self)
+end
+
+-- MP server: stopped before complete() (NetTimedAction.java:107-115). SP: stop() below; an MP client only stops.
+function ISThrowCapsuleAction:serverStop()
+    M.Play.throwStopped(self)
+end
+
+function ISThrowCapsuleAction:stop()
+    if not isClient() and M.Play then M.Play.throwStopped(self) end
+    ISBaseTimedAction.stop(self)
 end
 
 function ISThrowCapsuleAction:getDuration()

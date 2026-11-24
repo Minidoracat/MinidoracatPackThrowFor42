@@ -180,8 +180,9 @@ local function captured(args)
         Notify.toast(getText("IGUI_MinidoracatPackThrow_Captured", name), getText("IGUI_MinidoracatPackThrow_CapturedHere"))
         return
     end
-    -- a consumed capsule is neither on the ground nor kept: the reason already says it is gone
-    local text = args.consumed and failure(args)
+    -- a consumed capsule is neither on the ground nor kept, and one no longer carried (NO_CAPSULE) is not "still in
+    -- your inventory": the reason alone
+    local text = (args.consumed or args.why == "NO_CAPSULE") and failure(args)
         or getText(args.dropped and "IGUI_MinidoracatPackThrow_CaptureDropped" or "IGUI_MinidoracatPackThrow_CaptureKept",
             failure(args))
     Notify.toast(getText("IGUI_MinidoracatPackThrow_CaptureFailed"), text, true, 8000)
