@@ -6,6 +6,9 @@
 [*] With Project Viewpoint in first or third person, the pack/unpack smoke and the flying capsule no longer show up in the wrong place on screen. They are hidden while the 3D view is on; sound and the flash still play, and the isometric view shows them as before.
 [*] With Project Viewpoint, aiming the crosshair at a loaded capsule on the ground now lists "Press the Button". Vehicles still do not list "Pack into Capsule" there: use "Throw to Capture" from the inventory.
 [*] Tested with Project Viewpoint 0.1.7. Nothing changes if you do not use it.
+[*] Capsules and Pal Spheres kept in a bag (backpack, fanny pack) can now be thrown, used for "Throw to Capture" and released straight from the bag. Before, they were moved to the main inventory first; when it had no room, the aim frame was green but clicking did nothing.
+[*] "Pack into Capsule" and catching an animal from the menu no longer use up an empty capsule or Pal Sphere stored in the cargo of a packed vehicle.
+[*] Multiplayer: when a thrown capsule is refused because it would land in someone else's safehouse and you are standing in someone else's safehouse too, it now stays in your inventory instead of dropping on their floor.
 [/list]
 
 [h3]🔧 修正[/h3]

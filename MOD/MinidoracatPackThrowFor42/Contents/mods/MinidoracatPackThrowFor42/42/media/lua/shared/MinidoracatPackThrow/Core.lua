@@ -97,12 +97,14 @@ function M.inCapsule(item)
 end
 
 -- True when the player carries `item` (a bag they wear or hold counts) and it is not cargo inside a loaded capsule:
--- the one test for throw, capture and release (menu, action isValid, server complete and landing). It follows the
--- containers that really hold the item up to the main inventory, as far as the landing's own search goes
--- (getItemWithIDRecursiv: 16 bags). In MP it also asks getCharacter, as the server's item sync does
--- (GameServer.sendRemoveItemFromContainer): that looks at 16 containers (ItemContainer.java:3327-3345), so 15 bags,
--- and whatever passes the client is told about. getCharacter alone is not ownership: it returns the first parent it
--- meets, and a bag once attached keeps its old owner as parent (IsoGameCharacter.java:3575-3588).
+-- the one test for throw, capture, release and the empty capsule a menu pack uses up (menu, action isValid, server
+-- complete and landing; Rules.emptyCapsule). It follows the containers that really hold the item up to the main
+-- inventory, as far as the landing's own search goes (getItemWithIDRecursiv: 16 bags). In MP it also asks
+-- getCharacter, as the server's item sync does (GameServer.sendRemoveItemFromContainer): that looks at 16 containers
+-- (ItemContainer.java:3327-3345), so 15 bags, and the client is told about whatever passes; a container attached to
+-- the player itself is the exception (the sync names the main inventory instead; no vanilla item is one).
+-- getCharacter alone is not ownership: it returns the first parent it meets, and a bag once attached keeps its old
+-- owner as parent (IsoGameCharacter.java:3575-3588).
 function M.carries(player, item)
     if item == nil or M.inCapsule(item) then return false end
     local inv, c = player:getInventory(), item:getContainer()
