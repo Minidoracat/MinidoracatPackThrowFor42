@@ -94,19 +94,21 @@ local function newContainer(holder)
     function c:getCountTypeRecurse(t) return self:getAllTypeRecurse(t):size() end
     function c:getFirstTypeRecurse(t) return self:getAllTypeRecurse(t):get(0) end
     -- 引擎的 TypeEvalArgPredicate：先比型別才叫 Lua，回 true 才算（ItemContainer.java:4074-4077）；走訪順序是先這一層、
-    -- 再依序進每個袋子（getFirstRecurse／getAllRecurse，ItemContainer.java:1265-1295、1364-1390）
-    function c:getAllTypeEvalArgRecurse(t, fn, arg, out)
-        out = out or {}
+    -- 再依序進每個袋子，first 找到就停（getFirstRecurse／getAllRecurse，ItemContainer.java:1265-1295、1364-1390）
+    local function evalWalk(self, t, fn, arg, out, first)
         for _, x in ipairs(self.list) do
-            if x.type == t and fn(x, arg) == true then out[#out + 1] = x end
+            if x.type == t and fn(x, arg) == true then
+                out[#out + 1] = x
+                if first then return out end
+            end
         end
         for _, x in ipairs(self.list) do
-            if x.inv then x.inv:getAllTypeEvalArgRecurse(t, fn, arg, out) end
+            if x.inv and #evalWalk(x.inv, t, fn, arg, out, first) > 0 and first then return out end
         end
         return out
     end
-    function c:getFirstTypeEvalArgRecurse(t, fn, arg) return self:getAllTypeEvalArgRecurse(t, fn, arg)[1] end
-    function c:getCountTypeEvalArgRecurse(t, fn, arg) return #self:getAllTypeEvalArgRecurse(t, fn, arg) end
+    function c:getFirstTypeEvalArgRecurse(t, fn, arg) return evalWalk(self, t, fn, arg, {}, true)[1] end
+    function c:getCountTypeEvalArgRecurse(t, fn, arg) return #evalWalk(self, t, fn, arg, {}) end
     function c:getAllTypeRecurse(t)
         local out = {}
         local function walk(cc)
@@ -3208,12 +3210,14 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
         quiet = true
         local sentBefore, missBefore = #sent, #misses
         Throw.land({ player = stranger, capsuleId = l4.id, x = 22, y = 31, z = 0, mode = "throw", dir = "E" })
-        local insideThrow, afterThrow = lastSent(), #sent
+        local insideThrow, afterThrow, missAfterThrow = lastSent(), #sent, #misses
         Throw.land({ player = stranger, capsuleId = c9.id, x = 22, y = 31, z = 0, mode = "capture", cap = { kind = "animal", tid = 77 } })
         local insideMiss = lastSent()
+        local first, second = sent[sentBefore + 1] or {}, sent[sentBefore + 2] or {}
         quiet = false
         stranger.getCurrentSquare = savedSquare
-        check(afterThrow == sentBefore + 1 and #sent == sentBefore + 2
+        check(afterThrow == sentBefore + 1 and #sent == sentBefore + 2 and missAfterThrow == missBefore + 1
+            and first[1] == stranger and first[3] == "landed" and second[1] == stranger and second[3] == "landed"
             and insideThrow.mode == "throw" and insideThrow.capsuleId == l4.id and insideThrow.why == "SAFEHOUSE"
             and insideThrow.dropped == false and insideThrow.feet == true
             and insideMiss.mode == "capture" and insideMiss.capsuleId == c9.id and insideMiss.ok == false
