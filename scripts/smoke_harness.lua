@@ -1244,6 +1244,20 @@ do
         and Rules.packWhyNot(kp, {}, nil) == "NO_CAPSULE" and Rules.packWhyNot(kp, {}, T1) == nil
         and Rules.packWhyNot(kp, {}, M.FIRST_SPHERE) == "WRONG_ITEM",
         "packWhyNot：停用的款式 TYPE_OFF、沒帶的或沒指定 NO_CAPSULE、帕魯球收不了車 WRONG_ITEM、帶著且啟用的放行")
+    do -- an empty capsule among a loaded capsule's cargo is cargo: not counted, not picked, even ahead of the player's own
+        local cp = newPlayer("cargoOnly", false)
+        local cargo = cp.inv:AddItem(instanceItem(T6.loaded)).inv
+        cargo:AddItem(instanceItem(T1.empty))
+        cargo:AddItem(instanceItem("Base.Bag_Schoolbag")).inv:AddItem(instanceItem(T6.empty))
+        local mine = cp.inv:AddItem(instanceItem("Base.Bag_Schoolbag")).inv:AddItem(instanceItem(T1.empty))
+        local own = Rules.emptyTypes(cp)
+        check(Rules.emptyCapsule(cp, T1) == mine and #own == 1 and own[1].type == T1 and own[1].n == 1
+            and Rules.emptyCapsule(cp, T6) == nil and Rules.packWhyNot(cp, {}, T6) == "NO_CAPSULE",
+            "裝車膠囊貨物裡的空膠囊不算自己的：選單不列、不計數，收車挑的是自己袋子裡那顆")
+        mine.container:Remove(mine)
+        check(Rules.emptyCapsule(cp, T1) == nil and #Rules.emptyTypes(cp) == 0 and Rules.packWhyNot(cp, {}, T1) == "NO_CAPSULE",
+            "身上只剩貨物裡的空膠囊：選單沒有收車選項，伺服器回 NO_CAPSULE")
+    end
     Rules.vehicleWhyNot, Rules.mayPack = savedV, savedM
     SandboxVars = nil
     check(Rules.typeOn(T4), "沒有沙盒值＝啟用（預設七種全開）")
@@ -3161,6 +3175,24 @@ local function captureCases() -- 獨立函式：主程式的 local 已接近 200
     check(releaseSent.why == "SAFEHOUSE" and releaseSent.mode == "release" and releaseSent.dropped == nil
         and stranger.inv:getItemWithIDRecursiv(l3.id) == l3 and Store.read(l3.id).state == "PACKED",
         "帕魯球放出時那格剛好在別人的安全屋（落地再驗）：被拒，帕魯球留在背包，紀錄不動")
+    do -- the thrower stands inside the safehouse too (strangers may walk in, not interact): no square to drop on
+        local l4, c9 = animalRecord(stranger.inv:AddItem(instanceItem(Steam.loaded))), capsuleFor(stranger)
+        local savedSquare, inside = stranger.getCurrentSquare, drops(sq(23, 32))
+        stranger.getCurrentSquare = function() return sq(23, 32) end
+        house = drops(sq(22, 31))
+        quiet = true
+        Throw.land({ player = stranger, capsuleId = l4.id, x = 22, y = 31, z = 0, mode = "throw", dir = "E" })
+        local insideThrow = lastSent()
+        Throw.land({ player = stranger, capsuleId = c9.id, x = 22, y = 31, z = 0, mode = "capture", cap = { kind = "animal", tid = 77 } })
+        local insideMiss = lastSent()
+        quiet = false
+        stranger.getCurrentSquare = savedSquare
+        check(insideThrow.why == "SAFEHOUSE" and insideThrow.dropped == false and insideMiss.ok == false
+            and insideMiss.dropped == false and #inside == 0 and #house == 0
+            and stranger.inv:getItemWithIDRecursiv(l4.id) == l4 and stranger.inv:getItemWithIDRecursiv(c9.id) == c9
+            and Store.read(l4.id).state == "PACKED",
+            "丟的人自己也站在別人的安全屋裡：落地被拒時膠囊不掉在腳下，留在背包（裝好的膠囊與丟出抓取的空膠囊都一樣）")
+    end
     local restorer = at("restorer", 19, 37, true)
     quiet = true
     local refused = Admin.restore(restorer, l2.id, 22, 31, 0, nil, nil, "E")

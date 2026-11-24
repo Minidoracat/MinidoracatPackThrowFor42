@@ -142,17 +142,27 @@ function Rules.craftOn(t, level)
     return t ~= nil and level ~= nil and level > 1 and Rules.craftLevel(t) == level and Rules.typeOn(t)
 end
 
--- The player's first empty capsule of type t (any depth in the inventory), or nil.
+-- The player's empty capsules of type t at any depth, as a Lua array. An empty one among a loaded capsule's cargo is
+-- left out: it is cargo (the engine's own type searches walk into the loaded capsule's container).
+local function empties(player, t)
+    local all, out = player:getInventory():getAllTypeRecurse(t.empty), {}
+    for i = 0, all:size() - 1 do
+        if not M.inCapsule(all:get(i)) then out[#out + 1] = all:get(i) end
+    end
+    return out
+end
+
+-- The player's first empty capsule of type t (any depth in the inventory, cargo left out), or nil.
 function Rules.emptyCapsule(player, t)
-    return t and player:getInventory():getFirstTypeRecurse(t.empty)
+    return t and empties(player, t)[1]
 end
 
 -- Every type the player has empty ones of, in M.TYPES order: { { type, n, on }, ... }; spheres: the Pal Sphere tiers
 -- (the animal menu), else the capsules (the vehicle menu).
 function Rules.emptyTypes(player, spheres)
-    local inv, out = player:getInventory(), {}
+    local out = {}
     for _, t in ipairs(M.TYPES) do
-        local n = t.sphere == (spheres == true) and inv:getCountTypeRecurse(t.empty) or 0
+        local n = t.sphere == (spheres == true) and #empties(player, t) or 0
         if n > 0 then out[#out + 1] = { type = t, n = n, on = Rules.typeOn(t) } end
     end
     return out

@@ -41,14 +41,16 @@ local function stateTime(snap)
     return nil
 end
 
--- Drops a carried capsule on sq; never into a safehouse the player may not touch (spec C.3): their own square then.
+-- Drops a carried capsule on sq; never into a safehouse the player may not touch (spec C.3): their own square then,
+-- and when they stand in one too the capsule stays on them (false).
 local function dropAt(player, capsule, sq)
     local c = capsule:getContainer()
     if not c or capsule:getWorldItem() then return false end
-    if not sq or Rules.safehouseWhyNot(player, { x1 = sq:getX(), y1 = sq:getY(), x2 = sq:getX(), y2 = sq:getY() }, sq:getZ()) then
-        sq = player:getCurrentSquare()
+    local function barred(s)
+        return not s or Rules.safehouseWhyNot(player, { x1 = s:getX(), y1 = s:getY(), x2 = s:getX(), y2 = s:getY() }, s:getZ())
     end
-    if not sq then return false end
+    if barred(sq) then sq = player:getCurrentSquare() end
+    if barred(sq) then return false end
     player:removeFromHands(capsule)
     c:DoRemoveItem(capsule)
     sendRemoveItemFromContainer(c, capsule)
