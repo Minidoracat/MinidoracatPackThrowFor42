@@ -3621,8 +3621,8 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
         and #sent == sentBefore + 1 and lastSent().why == "NO_CAPSULE" and lastSent().capsuleId == late.id,
         "放手後、完成前袋子離身：已畫的飛行收掉（一次 miss，這顆的），回一次 NO_CAPSULE")
 
-    -- the same, but the client saw it first and stopped the action: complete() never runs, the stop answers once;
-    -- a plain cancel (still carried) answers nothing
+    -- the same, but the client saw it first and stopped the action: complete() never runs, the server's serverStop
+    -- answers once; a plain cancel (still carried) answers nothing
     a.inv:AddItem(bag2)
     intent(a, "throw", late)
     local cancelled = throwOf(a, late)
@@ -3633,14 +3633,33 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
     a.inv:Remove(bag2)
     local invalid = cancelled:isValid() == false
     cancelled:serverStop()
+    local once = #misses == missBefore + 1 and misses[#misses] == late.id and #sent == sentBefore + 1
+        and lastSent().why == "NO_CAPSULE" and lastSent().capsuleId == late.id and lastSent().mode == "throw"
     cancelled:serverStop()
-    local savedBase = ISBaseTimedAction
-    ISBaseTimedAction = { stop = function() end }
-    cancelled:stop()
-    ISBaseTimedAction = savedBase
-    check(plainCancel and invalid and #misses == missBefore + 1 and misses[#misses] == late.id and #sent == sentBefore + 1
-        and lastSent().why == "NO_CAPSULE" and lastSent().capsuleId == late.id and lastSent().mode == "throw",
-        "放手後袋子離身、動作被停掉（complete 沒跑）：停掉時收掉飛行、回一次 NO_CAPSULE；還在身上的一般取消不回")
+    check(plainCancel and invalid and once and #misses == missBefore + 1 and #sent == sentBefore + 1,
+        "MP 放手後袋子離身、動作被停掉（complete 沒跑）：serverStop 收掉飛行、回一次 NO_CAPSULE，再停不再回；還在身上的一般取消不回")
+
+    -- alone there is no serverStop: stop() answers, and the base stop still runs. When complete() already answered
+    -- (the clip's end and a forced stop in one update: the engine runs both) the stop stays quiet
+    a.inv:AddItem(bag2)
+    local savedBase, savedCmd, baseStops, spSent = ISBaseTimedAction, M.onServerCommand, 0, {}
+    ISBaseTimedAction = { stop = function() baseStops = baseStops + 1 end }
+    M.onServerCommand = function(_, args) spSent[#spSent + 1] = args end
+    isServer = function() return false end
+    local alone, both = throwOf(a, late), throwOf(a, late)
+    Play.released(alone)
+    Play.released(both)
+    a.inv:Remove(bag2)
+    missBefore = #misses
+    alone:stop()
+    local aloneOk = #misses == missBefore + 1 and #spSent == 1 and spSent[1].why == "NO_CAPSULE"
+        and spSent[1].capsuleId == late.id and baseStops == 1
+    both:complete()
+    local completed = #misses == missBefore + 2 and #spSent == 2
+    both:stop()
+    isServer, M.onServerCommand, ISBaseTimedAction = savedServer, savedCmd, savedBase
+    check(aloneOk and completed and #misses == missBefore + 2 and #spSent == 2 and baseStops == 2,
+        "單人放手後袋子離身：stop 收掉飛行、回一次 NO_CAPSULE，原版的 stop 照跑；complete 已經回過時 stop 不再回")
 
     quiet = false
     Throw.schedule, Unpack.spawn, M.Fx.broadcast, getOnlinePlayers = saved.schedule, saved.spawn, saved.fx, saved.online

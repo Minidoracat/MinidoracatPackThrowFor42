@@ -224,6 +224,8 @@ function Play.throw(action)
             if action.flightAt then Fx.broadcast("miss", { x = x, y = y, z = z, capsuleId = id }) end
             Play.send(player, "landed", { ok = false, why = "NO_CAPSULE", capsuleId = id, mode = kind })
         end
+        -- answered: SP runs complete() and then stop() when both are forced in one update (IsoGameCharacter.java:9183-9196)
+        action.flightAt = nil
         return refuse(player, "throw", "NO_CAPSULE", id)
     end
     if loadedSphere(item) then
@@ -256,6 +258,7 @@ function Play.throwStopped(action)
     if not (action.flightAt and item) or M.carries(player, item) then return end
     local id, kind = item:getID(), intentKind(item)
     if not Play.takeIntent(player, kind, id) then return end
+    action.flightAt = nil
     Fx.broadcast("miss", { x = action.x, y = action.y, z = action.z, capsuleId = id })
     Play.send(player, "landed", { ok = false, why = "NO_CAPSULE", capsuleId = id, mode = kind })
     refuse(player, "throw-stopped", "NO_CAPSULE", id)
