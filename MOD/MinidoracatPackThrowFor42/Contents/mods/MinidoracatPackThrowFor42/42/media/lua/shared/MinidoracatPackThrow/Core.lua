@@ -96,11 +96,13 @@ function M.inCapsule(item)
     return item ~= nil and M.isCapsuleContainer(item:getContainer())
 end
 
--- True when the player carries `item` at any depth (a bag they wear or hold counts) and it is not cargo inside a
--- loaded capsule: the one test for throw, capture and release (menu, action isValid, server complete). The object
--- itself is matched: the server's action item was resolved from a container the client named.
+-- True when the player carries `item` (a bag they wear or hold counts) and it is not cargo inside a loaded capsule:
+-- the one test for throw, capture and release (menu, action isValid, server complete and landing). getCharacter is
+-- what the server's item sync asks (GameServer.sendRemoveItemFromContainer): it walks up to 16 containers
+-- (ItemContainer.java:3327-3345), so whatever passes here the client is also told about.
 function M.carries(player, item)
-    return item ~= nil and not M.inCapsule(item) and player:getInventory():containsRecursive(item)
+    local c = item and item:getContainer()
+    return c ~= nil and c:getCharacter() == player and not M.inCapsule(item)
 end
 
 -- Drops capsule containers from a java ArrayList<ItemContainer> in place (crafting and building input lists).

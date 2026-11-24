@@ -205,7 +205,7 @@ end
 -- ISThrowCapsuleAction release (server / SP).
 function Play.released(action)
     local item = action.item
-    if not item or loadedSphere(item) then return end
+    if not item or loadedSphere(item) or not M.carries(action.character, item) then return end
     local intent = {} -- SP: no intents (Play.takeIntent)
     if isServer() then intent = findIntent(action.character, intentKind(item), item:getID()) end
     if not intent or throwWhyNot(action, intent) then return end
@@ -217,10 +217,15 @@ end
 function Play.throw(action)
     local player, item, x, y, z = action.character, action.item, action.x, action.y, action.z
     local id = item and item:getID()
+    local kind = intentKind(item)
     if not ((M.isLoaded(item) or M.isEmpty(item)) and M.carries(player, item)) then
+        -- a real throw (its intent is here) whose capsule left the player meanwhile: say so, and end a flight shown
+        if id and Play.takeIntent(player, kind, id) then
+            if action.flightAt then Fx.broadcast("miss", { x = x, y = y, z = z, capsuleId = id }) end
+            Play.send(player, "landed", { ok = false, why = "NO_CAPSULE", capsuleId = id, mode = kind })
+        end
         return refuse(player, "throw", "NO_CAPSULE", id)
     end
-    local kind = intentKind(item)
     if loadedSphere(item) then
         Play.send(player, "landed", { ok = false, why = "WRONG_ITEM", capsuleId = id, mode = kind })
         return refuse(player, kind, "WRONG_ITEM", id)

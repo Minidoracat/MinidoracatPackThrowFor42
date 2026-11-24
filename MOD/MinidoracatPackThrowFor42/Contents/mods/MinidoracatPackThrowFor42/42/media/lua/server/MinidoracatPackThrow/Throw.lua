@@ -80,7 +80,7 @@ function Throw.capture(p)
     local player = p.player
     local capsule = Unpack.findCapsule(player, p.capsuleId)
     local res
-    if not (capsule and M.isEmpty(capsule) and capsule:getContainer() and not capsule:getWorldItem()) then
+    if not (capsule and M.isEmpty(capsule) and M.carries(player, capsule)) then
         res = { ok = false, why = "NO_CAPSULE" }
     else
         local t = M.typeOf(capsule)
@@ -121,6 +121,9 @@ function Throw.land(p)
     if p.mode == "capture" then return Throw.capture(p) end
     local res
     local capsule = Unpack.findCapsule(player, p.capsuleId)
+    -- thrown and released ones must still be on the player (the bag may have left, or Guard put it back among a
+    -- capsule's cargo, while it flew); only a pressed one lies on the ground
+    if capsule and p.mode ~= "press" and not M.carries(player, capsule) then capsule = nil end
     local t = capsule and M.typeOf(capsule) -- read now: a good unpack removes the capsule
     local sq = getCell():getGridSquare(p.x, p.y, p.z)
     if not capsule then

@@ -80,13 +80,16 @@ local function newContainer(holder)
             if r then return r end
         end
     end
-    -- 物件比對、任何深度（ItemContainer.containsRecursive）。刻意不做 containsID：它不遞迴（ItemContainer.java:3175），
-    -- 舊 harness 把它補成遞迴，所以「袋子裡的膠囊丟不出去」一直抓不到
-    function c:containsRecursive(it)
-        for _, x in ipairs(self.list) do
-            if x == it or (x.inv and x.inv:containsRecursive(it)) then return true end
+    -- 引擎的 getCharacter：沿容器鏈往外最多看 16 個容器，找到拿著它的角色（ItemContainer.java:3327-3345）。刻意不做
+    -- containsID：它不遞迴（ItemContainer.java:3175），舊 harness 把它補成遞迴，所以「袋子裡的膠囊丟不出去」一直抓不到
+    function c:getCharacter()
+        local cc = self
+        for _ = 1, 16 do
+            if cc.owner then return cc.owner end
+            cc = cc.holder and cc.holder.container
+            if not cc then break end
         end
-        return false
+        return nil
     end
     function c:getCountTypeRecurse(t) return self:getAllTypeRecurse(t):size() end
     function c:getFirstTypeRecurse(t) return self:getAllTypeRecurse(t):get(0) end
@@ -183,6 +186,7 @@ function checkPermissions(p) return p.admin == true end
 function ZombRand() return 0 end
 local function newPlayer(name, admin)
     local p = { admin = admin, inv = newContainer(nil) }
+    p.inv.owner = p
     function p:getUsername() return name end
     function p:getX() return 100.5 end
     function p:getY() return 200.7 end
@@ -1323,7 +1327,8 @@ local thrown = Play.throw({ character = alice, item = instanceItem(M.TYPES[1].lo
 print = savedPrint
 check(refused == false and printed[1] and printed[1]:find("pack refused by=alice why=NO_INTENT", 1, true) ~= nil,
     "沒有 intent 的收車被拒並記一行：" .. tostring(printed[1]))
-check(thrown == false, "膠囊不在背包裡的丟擲被拒")
+check(thrown == false and printed[2] and printed[2]:find("why=NO_CAPSULE", 1, true) ~= nil,
+    "膠囊不在背包裡的丟擲被拒 NO_CAPSULE：" .. tostring(printed[2]))
 do -- 動作瞬間完成（管理員作弊）時沒有放手事件：complete 仍要先畫飛行，FLIGHT_MS 後落地
     (function()
         local Fx, Fp, Th = M.Fx, M.Footprint, M.Throw
@@ -3414,14 +3419,14 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
     loadfile(MEDIA .. "/shared/TimedActions/ISThrowCapsuleAction.lua")()
     loadfile(MEDIA .. "/shared/TimedActions/ISReleaseSphereAction.lua")()
     ISBaseTimedAction, loaded["TimedActions/ISBaseTimedAction"] = saved.base, nil
-    local scheduled, spawns, packed, players = {}, 0, {}, {}
+    local scheduled, spawns, packed, players, flights = {}, 0, {}, {}, 0
     Throw.schedule = function(p) scheduled[#scheduled + 1] = p end
     Unpack.spawn = function(_, square)
         spawns = spawns + 1
         return { getSquare = function() return square end, getAnimalID = function() return 88 end,
             getOnlineID = function() return 702 end }, { home = 0, other = 0, ground = 0 }
     end
-    M.Fx.broadcast = function() end
+    M.Fx.broadcast = function(kind) if kind == "flight" then flights = flights + 1 end end
     getOnlinePlayers = function() return javaList(players) end
     SandboxVars = { MinidoracatPackThrow = {} }
     SafeHouse = nil
@@ -3524,23 +3529,63 @@ do (function() -- 獨立函式：主程式的 local 已到 200 個上限
         where:Remove(holder)
     end
 
-    -- not carried: in a bag nobody holds, on another player
+    -- not carried: in a bag nobody holds, on another player. A real intent gets one answer; nothing flies
     local other = carrier("other")
     local loose, theirs = loadedIn(instanceItem("Base.Bag_Schoolbag").inv, Steam), loadedIn(other.inv, Steam)
     intent(a, "throw", loose); intent(a, "throw", theirs)
-    check(throwOf(a, loose):isValid() == false and throwOf(a, theirs):isValid() == false and Play.throw(throwOf(a, loose)) == false
+    local flightsBefore, sentBefore = flights, #sent
+    Play.released(throwOf(a, loose))
+    local looseThrown = Play.throw(throwOf(a, loose))
+    local looseSent, looseCount = lastSent(), #sent - sentBefore
+    check(throwOf(a, loose):isValid() == false and throwOf(a, theirs):isValid() == false and looseThrown == false
         and Play.throw(throwOf(a, theirs)) == false and #scheduled == n, "不在自己身上的膠囊（沒人拿的袋子裡、別人身上）不能丟")
+    check(flights == flightsBefore and looseCount == 1 and looseSent.why == "NO_CAPSULE" and looseSent.capsuleId == loose.id
+        and looseSent.mode == "throw" and Play.throw(throwOf(a, loose)) == false and #sent == sentBefore + 2,
+        "丟的時候膠囊已不在身上：不畫飛行，回一次 NO_CAPSULE（帶那顆的編號）；intent 用掉後再送不再回")
 
-    -- the bag leaves the player while the capsule flies: nothing lands, nothing is taken
-    local late = loadedIn(bag.inv, Steam)
+    -- how deep: what the server can tell the client about (15 bags between the item and the main inventory)
+    local function nested(depth)
+        local c = a.inv
+        for _ = 1, depth do c = bagIn(c).inv end
+        return loadedIn(c, Steam)
+    end
+    check(throwOf(a, nested(15)):isValid() == true and throwOf(a, nested(16)):isValid() == false,
+        "袋子最多 15 層：第 16 層伺服器沒辦法把移除同步給玩家（引擎 getCharacter 只往外看 16 個容器），不能丟")
+
+    -- while it flies the bag goes back among a loaded capsule's cargo (Guard), or leaves the player: nothing lands,
+    -- nothing is taken, one answer each
+    local bag2 = bagIn(a.inv)
+    local late, lateEmpty = loadedIn(bag2.inv, Steam), bag2.inv:AddItem(instanceItem(Steam.empty))
+    Footprint.find = function() return truck end
+    intent(a, "throw", late); intent(a, "capture", lateEmpty, 601)
+    local flew = Play.throw(throwOf(a, late)) and Play.throw(throwOf(a, lateEmpty))
+    local pThrow, pCapture = scheduled[#scheduled - 1], scheduled[#scheduled]
+    local holder = loadedIn(a.inv, Steam)
+    a.inv:Remove(bag2)
+    holder.inv:AddItem(bag2)
+    local packedBefore = #packed
+    sentBefore = #sent
+    Throw.land(pThrow)
+    local cargoThrow = lastSent()
+    Throw.land(pCapture)
+    local cargoCapture = lastSent()
+    check(flew == true and #sent == sentBefore + 2 and cargoThrow.why == "NO_CAPSULE" and cargoThrow.capsuleId == late.id
+        and cargoCapture.why == "NO_CAPSULE" and cargoCapture.capsuleId == lateEmpty.id and #packed == packedBefore
+        and late.container == bag2.inv and lateEmpty.container == bag2.inv and Store.read(late.id).state == "PACKED"
+        and spawns == spawned,
+        "飛行中袋子被放回裝車膠囊的貨物：落地各回一次 NO_CAPSULE，膠囊與空膠囊都還在袋子裡、紀錄 PACKED、沒收車也沒生東西")
+    holder.inv:Remove(bag2)
     intent(a, "throw", late)
-    local flew = Play.throw(throwOf(a, late))
-    a.inv:Remove(bag)
+    a.inv:AddItem(bag2)
+    local flewAgain = Play.throw(throwOf(a, late))
+    a.inv:Remove(bag2)
+    sentBefore = #sent
     Throw.land(scheduled[#scheduled])
     local lateSent = lastSent()
-    check(flew == true and lateSent.ok == false and lateSent.why == "NO_CAPSULE" and late.container == bag.inv
-        and Store.read(late.id).state == "PACKED" and spawns == spawned,
-        "飛行中袋子離身：落地 NO_CAPSULE，膠囊還在袋子裡、紀錄 PACKED、沒生東西")
+    check(flewAgain == true and #sent == sentBefore + 1 and sent[#sent][1] == a and sent[#sent][3] == "landed"
+        and lateSent.ok == false and lateSent.why == "NO_CAPSULE" and lateSent.capsuleId == late.id and lateSent.mode == "throw"
+        and late.container == bag2.inv and Store.read(late.id).state == "PACKED" and spawns == spawned,
+        "飛行中袋子離身：落地回一次 NO_CAPSULE（這顆的），膠囊還在袋子裡、紀錄 PACKED、沒生東西")
 
     quiet = false
     Throw.schedule, Unpack.spawn, M.Fx.broadcast, getOnlinePlayers = saved.schedule, saved.spawn, saved.fx, saved.online
@@ -3723,6 +3768,17 @@ local function infoCases() -- 獨立函式：主程式的 local 已接近 200 �
     loadfile(MEDIA .. "/client/MinidoracatPackThrow/Menu.lua")()
     local Menu = M.Menu
     local function ball(id) return { getID = function() return id end, getName = function() return "SphereMega: doubled" end } end
+    do -- the release is queued alone: no vanilla transfer to the main inventory first (it may have no room: nothing happened)
+        local savedQ, savedA, savedInv = ISTimedActionQueue, ISReleaseSphereAction, ISInventoryPaneContextMenu
+        local queue, transfers, bagged = {}, 0, ball(507)
+        ISTimedActionQueue = { add = function(a) queue[#queue + 1] = a end }
+        ISReleaseSphereAction = { new = function(_, p, it) return { Type = "ISReleaseSphereAction", character = p, item = it } end }
+        ISInventoryPaneContextMenu = { transferIfNeeded = function() transfers = transfers + 1 end }
+        local act = Menu.onRelease(me, bagged)
+        ISTimedActionQueue, ISReleaseSphereAction, ISInventoryPaneContextMenu = savedQ, savedA, savedInv
+        check(#queue == 1 and queue[1] == act and act.Type == "ISReleaseSphereAction" and act.item == bagged and transfers == 0,
+            "選單「放出」只排放出動作（那顆球），不先搬進主背包")
+    end
     local known = Menu.releaseLabel(ball(503))
     local plain, named = Menu.releaseLabel(ball(505))
     local b505 = ball(505)
