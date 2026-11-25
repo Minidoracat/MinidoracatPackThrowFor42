@@ -1,5 +1,5 @@
 [h1]Minidoracat Pack & Throw for B42 42.22.2-0.5.9[/h1]
-[i]2026-11-26[/i]
+[i]2026-11-25[/i]
 
 [b]English summary[/b]
 [list]
