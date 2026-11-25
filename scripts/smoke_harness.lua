@@ -1504,6 +1504,89 @@ s70002.state = "VOID"
 Store.write(70002, s70002)
 check(Index.page({ q = "70002" }, 1).rows[1].state == "VOID", "寫入後索引同步（VOID）")
 
+do -- 主程式的 local 已接近 200 個上限，放進函式
+    (function()
+        print("Index：flush 只重新編碼變動的列；整份索引分幾個 tick 編完才寫檔，內容和整份編碼相同")
+        local Json = MinidoracatPackThrow.Json
+        local realBatch = Index.ENCODE_ROWS
+        Index.ENCODE_ROWS = 50
+        Index._resetForTests()
+        local total = Index.page({}, 1).total
+        local ticks = math.ceil(total / Index.ENCODE_ROWS)
+        local s = Store.read(70002)
+        s.packedBy = "batch"
+        Store.write(70002, s)
+        local before = files[Index.file()]
+        for _ = 1, ticks - 1 do Index.flush(nowMs + 30000) end
+        check(ticks > 1 and files[Index.file()] == before,
+            "讀回後第一次 flush：" .. total .. " 列每 tick 編 50 列，前 " .. (ticks - 1) .. " 個 tick 不寫檔")
+        Index.flush(nowMs + 30000)
+        local data = Json.decode(files[Index.file()])
+        local n = 0
+        for _ in pairs(data and data.rows or {}) do n = n + 1 end
+        check(n == total and data.rows[70002].by == "batch", "第 " .. ticks .. " 個 tick 編完就寫：" .. n .. " 列、改過的那列是新的")
+        local gensOk = data ~= nil and type(data.gens) == "table"
+        for b = 0, Store.BUCKETS - 1 do
+            if gensOk and Store.headGen(b) ~= (data.gens[b] or 0) then gensOk = false end
+        end
+        check(gensOk, "拼出來的 gens 和每個桶的檔頭代數相同（下次開服不必重讀桶）")
+
+        -- 已經編好的列在寫檔前又被改：寫出的是新值
+        Index.ENCODE_ROWS = total - 1
+        Index._resetForTests()
+        Index.page({}, 1)
+        s.packedBy = "first"
+        Store.write(70002, s)
+        Index.flush(nowMs + 50000) -- 編了 total-1 列、還沒寫
+        local s3 = Store.read(70003)
+        local by3 = s3.packedBy
+        s3.packedBy = "late3"
+        Store.write(70003, s3)
+        s.packedBy = "late2"
+        Store.write(70002, s)
+        Index.flush(nowMs + 50000)
+        data = Json.decode(files[Index.file()])
+        check(data and data.rows[70002].by == "late2" and data.rows[70003].by == "late3",
+            "兩批之間改了已編好的列：寫出的是改後的值（至多一列還沒編，兩列裡至少一列已編過）")
+        s3.packedBy = by3
+        Store.write(70003, s3)
+
+        Index.ENCODE_ROWS = 50
+        Index.flush(nowMs + 60000)
+        s.packedBy = "again"
+        Store.write(70002, s)
+        Index.flush(nowMs + 70000)
+        data = Json.decode(files[Index.file()])
+        check(data and data.rows[70002].by == "again", "之後只有一列變動：同一個 tick 就寫出")
+        Index._resetForTests()
+        check(Index.page({}, 1).total == total and Index.page({ q = "again" }, 1).total == 1, "拼出來的 index.json 讀得回來")
+
+        print("Index：有一列編不出 JSON 時不寫檔，每 FLUSH_MS 才重試，只記一次 log")
+        Index.ENCODE_ROWS = realBatch -- 一個 tick 就走得到 70002
+        Index.page({}, 1)
+        s.packedBy = "healed"
+        Store.write(70002, s)
+        local realEncode, realLog, logs, calls = Json.encode, MinidoracatPackThrow.log, {}, 0
+        Json.encode = function(v)
+            if type(v) == "table" and v[70002] then calls = calls + 1; return nil, "70002.t" end
+            return realEncode(v)
+        end
+        MinidoracatPackThrow.log = function(m) logs[#logs + 1] = m end
+        before = files[Index.file()]
+        local seq = {}
+        for _, t in ipairs({ 80000, 80001, 80000 + Index.FLUSH_MS }) do
+            Index.flush(nowMs + t)
+            seq[#seq + 1] = calls
+        end
+        Json.encode, MinidoracatPackThrow.log = realEncode, realLog
+        local got = table.concat(seq, ",")
+        check(files[Index.file()] == before and got == "1,1,2" and #logs == 1 and logs[1]:find("70002", 1, true) ~= nil,
+            "沒寫檔；第 0／1 ms／FLUSH_MS 累計編了 " .. got .. " 次（同一秒內不重試）；log " .. #logs .. " 行")
+        Index.flush(nowMs + 90000)
+        check(Json.decode(files[Index.file()]).rows[70002].by == "healed", "恢復後照常寫出改後的值")
+    end)()
+end
+
 do -- 桶檔、保留天數、最後看到：主程式的 local 已接近 200 個上限，放進函式
     (function()
         print("Store：桶檔兩份輪流寫，寫到一半的那份被略過，兩份都不完整就不動")

@@ -16,13 +16,18 @@ M.Index = Index
 
 Index.PAGE_SIZE = 50
 Index.FLUSH_MS = 1000
+-- Rows JSON-encoded per tick while a flush catches up. Each row's text is kept until the row changes, so a flush only
+-- encodes what changed; a whole index (after a load) is spread over ticks this way. Encoding all of the live server's
+-- 3750 rows in one tick stalled it about 0.5 s (E2E indexflush-sp).
+Index.ENCODE_ROWS = 250
 Index.UNSEEN_MS = 7 * 86400000 -- the "not seen for a week" filter: packed capsules nobody has been near
 Index.STATES = { "PACKED", "UNPACKED", "RESTORED", "VOID" }
 
 local rows       -- capsuleId -> row; nil until loaded
 local gens       -- bucket -> generation the rows reflect
 local order      -- capsule ids, newest pack first; nil when it has to be rebuilt
-local dirty, lastFlush = false, nil
+local enc        -- capsuleId -> the row's JSON member text ("#<id>":{...}); missing until the next flush encodes it
+local dirty, lastFlush, badRow = false, nil, nil
 
 function Index.file() return Store.dir() .. "index.json" end
 
@@ -97,7 +102,7 @@ function Index.put(capsuleId, snap, written)
     local old = rows[capsuleId]
     if old and same(old, row) then return end
     if not old or old.t ~= row.t then order = nil end
-    rows[capsuleId] = row
+    rows[capsuleId], enc[capsuleId] = row, nil
     dirty = true
 end
 
@@ -122,8 +127,8 @@ local function reload(b)
     for id in pairs(rows) do
         if Store.bucketOf(id) == b and recs[id] == nil then stale[#stale + 1] = id end
     end
-    for _, id in ipairs(stale) do rows[id] = nil end
-    for id, snap in pairs(recs) do rows[id] = Index.row(id, snap) end
+    for _, id in ipairs(stale) do rows[id], enc[id] = nil, nil end
+    for id, snap in pairs(recs) do rows[id], enc[id] = Index.row(id, snap), nil end
     gens[b] = gen
     return true
 end
@@ -134,7 +139,7 @@ function Index.load()
     if rows then return end
     local text = readText(Index.file())
     local data = text and Json.decode(text)
-    rows, gens = {}, {}
+    rows, gens, enc = {}, {}, {}
     if type(data) == "table" and type(data.rows) == "table" and type(data.gens) == "table" then
         for id, row in pairs(data.rows) do
             if type(id) == "number" and type(row) == "table" then rows[id] = row end
@@ -157,17 +162,43 @@ function Index.load()
 end
 
 -- Writes index.json when something changed and FLUSH_MS has passed. Derived data: a failed write only means the next
--- start reads more buckets.
+-- start reads more buckets. Rows without a cached text are encoded first, at most ENCODE_ROWS a tick; the file is
+-- written on the tick the last one is done.
 function Index.flush(now)
     if not dirty or not rows then return end
     if lastFlush and now >= lastFlush and now - lastFlush < Index.FLUSH_MS then return end
+    local n = 0
+    for id, row in pairs(rows) do
+        if not enc[id] then
+            if n >= Index.ENCODE_ROWS then return end
+            local text, bad = Json.encode({ [id] = row })
+            if not text then
+                -- retried every FLUSH_MS, not every tick; logged once per row
+                lastFlush = now
+                if badRow ~= id then
+                    badRow = id
+                    M.log("index row " .. tostring(id) .. " cannot be written: " .. tostring(bad))
+                end
+                return
+            end
+            enc[id] = string.sub(text, 2, -2)
+            n = n + 1
+        end
+    end
     lastFlush = now
-    local text = Json.encode({ v = 2, rows = rows, gens = gens })
-    local w = text and getFileWriter(Index.file(), true, false)
+    local gtext = Json.encode(gens)
+    local w = gtext and getFileWriter(Index.file(), true, false)
     if not w then return end
-    w:write(text)
+    local parts, sep = { '{"v":2,"gens":', gtext, ',"rows":{' }, ""
+    for id in pairs(rows) do
+        parts[#parts + 1] = sep
+        parts[#parts + 1] = enc[id]
+        sep = ","
+    end
+    parts[#parts + 1] = "}}"
+    w:write(table.concat(parts))
     w:close()
-    dirty = false
+    dirty, badRow = false, nil
 end
 
 -- Closed records (unpacked and settled, restored, void) whose last event is older than `days`: dropped, at most
@@ -193,7 +224,7 @@ function Index.prune(now, days, maxBuckets)
     local dropped = 0
     for b, ids in pairs(byBucket) do
         local gone = Store.drop(ids)
-        for _, id in ipairs(gone) do rows[id] = nil end
+        for _, id in ipairs(gone) do rows[id], enc[id] = nil, nil end
         gens[b] = Store.gen(b)
         dropped = dropped + #gone
     end
@@ -281,7 +312,7 @@ end
 
 -- Test hook: forget everything in memory (the next call loads index.json again).
 function Index._resetForTests()
-    rows, gens, order, dirty, lastFlush = nil, nil, nil, false, nil
+    rows, gens, enc, order, dirty, lastFlush, badRow = nil, nil, nil, nil, false, nil, nil
 end
 
 Store.listeners[#Store.listeners + 1] = Index.put
