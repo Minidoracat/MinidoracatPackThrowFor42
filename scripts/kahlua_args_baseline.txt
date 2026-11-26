@@ -41,7 +41,6 @@
 13	client/MinidoracatPackThrow/Preview.lua|U|1<3
 1	client/MinidoracatPackThrow/Preview.lua|measure|1<2
 2	client/MinidoracatPackThrow/Preview.lua|measure|1~2|U
-1	client/MinidoracatPackThrow/Preview.lua|new|0<2
 6	client/MinidoracatPackThrow/Preview.lua|text|5<6
 1	client/MinidoracatPackThrow/ThrowCursor.lua|reason|2<3
 1	client/MinidoracatPackThrow/ThrowCursor.lua|safehouseWhyNot|3<4
